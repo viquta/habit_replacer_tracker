@@ -4,10 +4,6 @@
 
 This phase represents the most important part of the design process. Anything that is overlooked or forgotten in this phase has a negative effect on the implementation later and will lead, in the worst case, to useless results.
 
-## Initial Concept Development
-
-The first step is to create a written concept, to describe everything you need to build your habit tracking application. To write it, imagine you're working in a company creating a habit tracking app, you're the lead developer and you're trying to explain the technical foundations to your colleague sitting next to you. 
-
 ### Key Considerations
 
 - **Technical Foundation**: There's no need to go into too much detail about what habits are etc., you can directly dive into the proposed solution
