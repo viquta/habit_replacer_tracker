@@ -19,7 +19,8 @@ At least one diagram (e.g., in UML or C4) will be created and inserted to the wr
 ## Development Considerations
 
 How they (clients) create new habits, complete tasks, and check for their progress. The written concept must explain why the structure and process have been designed in the particular manner. What tools can I use to implement each component and the communication between the components.
-
+- **Implementation Tools**: What tools can be used to implement each component and how will the components communicate with each other?
+- 
 ## Submission Requirements
 
 ### Deliverables
