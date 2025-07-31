@@ -1,0 +1,36 @@
+Notes:
+
+31 July:
+  focusing on CLI with dummy components 
+  instaling "rich" from pip
+  CLI complete (with dummy components)
+  setting up MS SQL Server Express on Docker (since I'm currently developing on Mac)
+  
+  
+  Some notes for performance:
+    "Performance Guidance
+    
+    T-SQL will likely be faster for your habit tracking queries because:
+    
+    Data proximity - Processing happens where the data lives (database server)
+    Optimized execution - SQL Server's query optimizer is highly sophisticated
+    Reduced data transfer - Only results are sent over the network, not raw data
+    Indexing benefits - Your indexes (IX_HabitCompletions_HabitID, IX_HabitCompletions_CompletionDate) directly support query performance
+    Python might be better for:
+    
+    Complex statistical analysis beyond SQL's capabilities
+    Data visualization
+    Machine learning algorithms
+    Custom business logic that's difficult to express in SQL"
+
+  I should build with python:
+    CLI Interface & User Experience (check)
+    Smart Analytics & Recommendations
+    Pattern Recognition & Insights
+    Personalized Coaching Logic
+    Data Export & Reporting
+    Intelligent Habit Suggestions
+
+  I should use sql for:
+    basic aggregations (completion rates)
+    Current/longest streaks
