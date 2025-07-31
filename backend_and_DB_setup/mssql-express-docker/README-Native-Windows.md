@@ -1,4 +1,4 @@
-# Habit Tracker Database Setup - Native SQL Server Express
+# Habit Tracker Database Setup - Native SQL Server Express (IF YOU ALREADY HAVE SQL EXPRESS)
 
 ## Prerequisites
 - **SQL Server Express** (already installed ✅)

@@ -1,4 +1,4 @@
-# Habit Tracker Database Setup - Windows 11
+# Habit Tracker Database Setup - Windows 11 (IF YOU DON'T HAVE SQL EXPRESS YET)
 
 ## Prerequisites
 - **Docker Desktop for Windows** (with WSL2 backend recommended)
