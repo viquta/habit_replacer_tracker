@@ -1,0 +1,23 @@
+# Habit Tracker Application Dependencies
+
+# Database connectivity
+pyodbc>=4.0.39
+
+# Environment management
+python-dotenv>=1.0.0
+
+# CLI and UI libraries
+rich>=13.0.0
+
+# Data and date handling
+python-dateutil>=2.8.0
+
+# Testing (as required by project specifications)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Type checking and development (optional but recommended)
+mypy>=1.0.0
+
+# Documentation generation (optional)
+sphinx>=5.0.0

@@ -1,6 +1,12 @@
-# habit_replacer_tracker
+# Habit Tracker Application
 
-My Python Project for International University, demonstrating my Object-Oriented Programming and Functional Programming skills.
+A Python-based CLI habit tracking application with database integration, designed to help users track and replace bad habits with good ones.
+
+## 🌟 Project Philosophy
+
+**"Assume the user is performing the habit unless they log that they have not performed the routine."**
+
+This application follows a positive reinforcement approach, making it smooth and encouraging for users to maintain their habits.
 
 ## Table of Contents
 

@@ -1,46 +1,46 @@
 #!/usr/bin/env python3
 
-##################################################################################
-#prompt to Claude Sonnet 4 (with context from the previous conversation and access to 
-#repo requirements that I wrote earlier (see Documentation/project_requirements.md)): 
-#I don't have a backend or a database connection set yet, and I'd like to 
-# first create a CLI with dummy components just see how it will look like.
-#
-#I'm imagining something like:
-#📝 Manage Habits
-#✅ Log Habit Completion
-#📊 View Progress & Analytics
-#🔍 Search & Filter Habits
-#⚙️ Settings
-#❓ Help
-#🚪 Exit
-#And is there a way to have the CLI more "app like / GUI like"? 
-# i think there was some click library and make it nice and colorful. Please :)
-##################################################################################
 """
 Habit Tracker CLI Application
 Users can create, manage, and inspect habits they define in a convenient way
+
+Updated to integrate with the backend business logic and database
 """
 
 import sys
-#import os #will need later
-from datetime import datetime, date
-from typing import List, Dict, Optional
+import os
+from datetime import datetime, date, timedelta
+from typing import List, Dict, Optional, Any
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Prompt, Confirm, IntPrompt
 from rich.text import Text
 from rich.layout import Layout
 from rich.align import Align
 from rich.columns import Columns
-from rich.progress import Progress, BarColumn, TextColumn
+from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
 from rich.tree import Tree
 from rich import box
+from rich.markdown import Markdown
 import time
 
+# Import backend services
+try:
+    from backend.services import (
+        HabitService, HabitCompletionService, HabitAnalyticsService, 
+        SystemService, UserService
+    )
+    from backend.models import Habit, HabitPeriod, HabitNotFoundException, DatabaseException
+    from backend.analytics import analyze_habits_comprehensive
+    BACKEND_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Backend not available: {e}")
+    print("🔧 Running in demo mode with dummy data")
+    BACKEND_AVAILABLE = False
+
 class DummyHabit:
-    """Dummy habit class for demonstration purposes"""
+    """Dummy habit class for demonstration purposes when backend is not available"""
     def __init__(self, name: str, description: str, period: str, created_date: date):
         self.name = name
         self.description = description
@@ -49,29 +49,62 @@ class DummyHabit:
         self.completions = []  # List of completion dates
         self.streak = 0
 
+
 class HabitTrackerCLI:
+    """
+    Main CLI application class for the Habit Tracker
+    Integrated with backend services and database
+    """
+    
     def __init__(self):
         self.console = Console()
-        self.habits = self._load_dummy_habits()
+        self.running = True
         
-    def _load_dummy_habits(self) -> List[DummyHabit]:
-        """Load some dummy habits for demonstration"""
-        dummy_habits = [
-            DummyHabit("💧 Drink 8 glasses of water", "Stay hydrated throughout the day", "daily", date(2025, 1, 1)),
-            DummyHabit("📖 Read for 30 minutes", "Read books or articles for personal growth", "daily", date(2025, 1, 5)),
-            DummyHabit("🏃‍♂️ Exercise", "Physical activity for health", "daily", date(2025, 1, 10)),
-            DummyHabit("🧘 Meditation", "10 minutes of mindfulness", "daily", date(2025, 1, 15)),
-            DummyHabit("🏠 Clean house", "Weekly house cleaning routine", "weekly", date(2025, 1, 7)),
+        # Initialize backend services if available
+        if BACKEND_AVAILABLE:
+            try:
+                self.system_service = SystemService()
+                self.habit_service = HabitService()
+                self.completion_service = HabitCompletionService()
+                self.analytics_service = HabitAnalyticsService()
+                self.user_service = UserService()
+                
+                # Initialize system and check connectivity
+                if not self.system_service.initialize_system():
+                    self.console.print("⚠️ Failed to initialize system. Some features may not work.", style="bold yellow")
+                    
+                self.backend_ready = True
+            except Exception as e:
+                self.console.print(f"❌ Backend initialization failed: {e}", style="bold red")
+                self.backend_ready = False
+        else:
+            self.backend_ready = False
+            
+        # Initialize data (backend or dummy)
+        if not self.backend_ready:
+            self._init_dummy_data()
+    
+    def _init_dummy_data(self):
+        """Initialize dummy data for demo mode"""
+        self.dummy_habits = [
+            DummyHabit("💧 Drink 8 glasses of water", "Stay hydrated throughout the day", "daily", date.today() - timedelta(days=30)),
+            DummyHabit("📖 Read for 30 minutes", "Read books or articles for personal growth", "daily", date.today() - timedelta(days=25)),
+            DummyHabit("🏃‍♂️ Exercise", "Physical activity for health", "daily", date.today() - timedelta(days=20)),
+            DummyHabit("🧘 Meditation", "10 minutes of mindfulness", "daily", date.today() - timedelta(days=15)),
+            DummyHabit("🏠 Clean house", "Weekly house cleaning routine", "weekly", date.today() - timedelta(days=10))
         ]
         
-        # Add some dummy completion data
-        for habit in dummy_habits:
-            if habit.period == "daily":
-                habit.streak = 5
-            else:
-                habit.streak = 2
-                
-        return dummy_habits
+        # Add some dummy completions
+        today = date.today()
+        for habit in self.dummy_habits:
+            for i in range(10):  # Add 10 random completions
+                completion_date = today - timedelta(days=i)
+                if i % 2 == 0:  # Complete every other day for demo
+                    habit.completions.append(completion_date)
+                    habit.streak += 1
+        
+        # Set habits attribute for backward compatibility
+        self.habits = self.dummy_habits
 
     def show_header(self):
         """Display beautiful app header"""
@@ -133,134 +166,509 @@ class HabitTrackerCLI:
         self.console.print(menu_panel)
         
         # Show current status
+        if self.backend_ready:
+            try:
+                current_habits = self.habit_service.get_all_habits()
+                total_habits = len(current_habits)
+                # Get streak info from analytics if available
+                try:
+                    analytics_data = self.analytics_service.get_all_habits_analytics()
+                    total_streaks = sum(a.current_streak for a in analytics_data)
+                except:
+                    total_streaks = 0
+            except:
+                total_habits = 0
+                total_streaks = 0
+        else:
+            total_habits = len(self.habits)
+            total_streaks = sum(h.streak for h in self.habits)
+        
         status_text = Text()
         status_text.append(f"📅 Today: {datetime.now().strftime('%B %d, %Y')} | ", style="dim")
-        status_text.append(f"🎯 Active Habits: {len(self.habits)} | ", style="dim")
-        status_text.append(f"⚡ Total Streaks: {sum(h.streak for h in self.habits)}", style="dim")
+        status_text.append(f"🎯 Active Habits: {total_habits} | ", style="dim")
+        status_text.append(f"⚡ Total Streaks: {total_streaks}", style="dim")
         
         self.console.print(Align.center(status_text))
         self.console.print()
 
     def manage_habits_menu(self):
-        """Submenu for habit management"""
-        self.console.clear()
-        self.show_header()
-        
-        # Create habits table
-        habits_table = Table(
-            title="[bold bright_green]Your Habits[/bold bright_green]",
-            box=box.ROUNDED,
-            border_style="bright_green"
-        )
-        
-        habits_table.add_column("Habit", style="bold", width=30)
-        habits_table.add_column("Period", justify="center", width=10)
-        habits_table.add_column("Streak", justify="center", width=8)
-        habits_table.add_column("Created", justify="center", width=12)
-        
-        for habit in self.habits:
-            period_style = "bright_yellow" if habit.period == "daily" else "bright_magenta"
-            streak_style = "bright_green" if habit.streak > 0 else "dim"
+        """Submenu for habit management with backend integration"""
+        while True:
+            self.console.clear()
+            self.show_header()
             
-            habits_table.add_row(
-                habit.name,
-                f"[{period_style}]{habit.period}[/{period_style}]",
-                f"[{streak_style}]{habit.streak}[/{streak_style}]",
-                habit.created_date.strftime("%b %d")
+            # Get habits from backend or dummy data
+            if self.backend_ready:
+                try:
+                    habits = self.habit_service.get_all_habits()
+                except Exception as e:
+                    self.console.print(f"❌ Error loading habits: {e}", style="bold red")
+                    habits = []
+            else:
+                habits = self.dummy_habits
+
+            # Create habits table
+            habits_table = Table(
+                show_header=True,
+                header_style="bold bright_cyan",
+                border_style="bright_cyan",
+                box=box.ROUNDED
             )
-        
-        self.console.print(habits_table)
-        self.console.print()
-        
-        # Management options
-        options = [
-            ("1", "➕ Create new habit"),
-            ("2", "✏️  Edit existing habit"),
-            ("3", "🗑️  Delete habit"),
-            ("4", "⬅️  Back to main menu")
-        ]
-        
-        for num, option in options:
-            self.console.print(f"  {num}. {option}")
-        
-        self.console.print()
-        choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4"], default="4")
-        
-        if choice == "1":
-            self.create_habit()
-        elif choice == "2":
-            self.console.print("[yellow]Edit functionality - Coming soon![/yellow]")
-            input("\nPress Enter to continue...")
-        elif choice == "3":
-            self.console.print("[red]Delete functionality - Coming soon![/red]")
-            input("\nPress Enter to continue...")
-        elif choice == "4":
-            return
+            
+            habits_table.add_column("ID", style="dim", width=5)
+            habits_table.add_column("Habit Name", style="bold", width=30)
+            habits_table.add_column("Description", width=35)
+            habits_table.add_column("Period", justify="center", width=8)
+            habits_table.add_column("Status", justify="center", width=8)
+            habits_table.add_column("Created", justify="center", width=12)
+
+            for i, habit in enumerate(habits, 1):
+                if self.backend_ready:
+                    habit_id = str(habit.habit_id) if habit.habit_id else str(i)
+                    name = habit.habit_name
+                    description = habit.description
+                    period = habit.period.value if hasattr(habit.period, 'value') else habit.period
+                    status = "✅ Active" if habit.is_active else "❌ Inactive"
+                    created = habit.created_date.strftime("%Y-%m-%d") if habit.created_date else "Unknown"
+                else:
+                    habit_id = str(i)
+                    name = habit.name
+                    description = habit.description
+                    period = habit.period
+                    status = "✅ Active"
+                    created = habit.created_date.strftime("%Y-%m-%d")
+                
+                habits_table.add_row(habit_id, name, description, period, status, created)
+
+            if not habits:
+                empty_panel = Panel(
+                    Align.center("No habits found. Create your first habit!"),
+                    style="yellow",
+                    title="📝 Your Habits"
+                )
+                self.console.print(empty_panel)
+            else:
+                habits_panel = Panel(
+                    habits_table,
+                    title="[bold bright_cyan]📝 Your Habits[/bold bright_cyan]",
+                    border_style="bright_cyan"
+                )
+                self.console.print(habits_panel)
+
+            # Management options
+            self.console.print("\n[bold bright_cyan]Management Options:[/bold bright_cyan]")
+            self.console.print("1. ➕ Create new habit")
+            self.console.print("2. ✏️  Edit habit")
+            self.console.print("3. 🗑️  Delete habit")
+            self.console.print("4. 🔙 Back to main menu")
+            
+            choice = Prompt.ask("\nWhat would you like to do?", choices=["1", "2", "3", "4"])
+            
+            if choice == "1":
+                self.create_habit()
+            elif choice == "2":
+                self.edit_habit(habits)
+            elif choice == "3":
+                self.delete_habit(habits)
+            elif choice == "4":
+                break
 
     def create_habit(self):
-        """Create a new habit (dummy implementation)"""
+        """Create a new habit with backend integration"""
         self.console.print()
         self.console.print(Panel(
             "[bold bright_green]Create New Habit[/bold bright_green]",
             border_style="bright_green"
         ))
         
-        name = Prompt.ask("🏷️  Habit name")
-        description = Prompt.ask("📝 Description")
-        period = Prompt.ask("⏰ Period", choices=["daily", "weekly"], default="daily")
+        try:
+            name = Prompt.ask("🏷️  Habit name")
+            if not name.strip():
+                self.console.print("[red]❌ Habit name cannot be empty![/red]")
+                input("\nPress Enter to continue...")
+                return
+                
+            description = Prompt.ask("📝 Description (optional)", default="")
+            
+            # Improved period selection with numbered options
+            self.console.print("\n⏰ Period:")
+            self.console.print("1. daily")
+            self.console.print("2. weekly")
+            
+            period_choice = Prompt.ask("Select period", choices=["1", "2", "daily", "weekly"], default="1")
+            
+            # Convert choice to period string
+            if period_choice == "1" or period_choice.lower() == "daily":
+                period = "daily"
+            elif period_choice == "2" or period_choice.lower() == "weekly":
+                period = "weekly"
+            else:
+                period = "daily"  # Default fallback
+            
+            # Create habit using backend or add to dummy data
+            if self.backend_ready:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[bold blue]Creating habit..."),
+                    console=self.console
+                ) as progress:
+                    progress.add_task("Creating", total=None)
+                    
+                    habit = self.habit_service.create_habit(name, description, period)
+                    
+                self.console.print(f"[bright_green]✅ Habit '{habit.habit_name}' created successfully![/bright_green]")
+                self.console.print(f"[dim]📅 Created on: {habit.created_date}[/dim]")
+                
+            else:
+                # Dummy mode
+                new_habit = DummyHabit(name, description, period, date.today())
+                self.dummy_habits.append(new_habit)
+                self.console.print(f"[bright_green]✅ Habit '{name}' created successfully! (Demo mode)[/bright_green]")
+                
+        except DatabaseException as e:
+            self.console.print(f"[red]❌ Database error: {e}[/red]")
+        except Exception as e:
+            self.console.print(f"[red]❌ Error creating habit: {e}[/red]")
+            
+        input("\nPress Enter to continue...")
+
+    def edit_habit(self, habits):
+        """Edit an existing habit"""
+        if not habits:
+            self.console.print("[yellow]No habits to edit![/yellow]")
+            input("\nPress Enter to continue...")
+            return
+            
+        self.console.print("\n[bold bright_cyan]Select habit to edit:[/bold bright_cyan]")
         
-        # Simulate creating habit
-        with Progress(
-            TextColumn("[bold blue]Creating habit..."),
-            BarColumn(),
-            console=self.console
-        ) as progress:
-            task = progress.add_task("Creating", total=100)
-            for i in range(100):
-                time.sleep(0.01)
-                progress.update(task, advance=1)
+        # Show habits with numbers
+        for i, habit in enumerate(habits, 1):
+            name = habit.habit_name if self.backend_ready else habit.name
+            self.console.print(f"{i}. {name}")
         
-        self.console.print(f"[bright_green]✅ Habit '{name}' created successfully![/bright_green]")
+        try:
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                
+                if self.backend_ready:
+                    current_name = selected_habit.habit_name
+                    current_desc = selected_habit.description
+                    current_period = selected_habit.period.value
+                    
+                    new_name = Prompt.ask("New name", default=current_name)
+                    new_desc = Prompt.ask("New description", default=current_desc)
+                    new_period = Prompt.ask("New period", choices=["daily", "weekly"], default=current_period)
+                    
+                    try:
+                        updated_habit = self.habit_service.update_habit(
+                            selected_habit.habit_id, new_name, new_desc, new_period
+                        )
+                        self.console.print(f"[green]✅ Habit '{updated_habit.habit_name}' updated successfully![/green]")
+                    except Exception as e:
+                        self.console.print(f"[red]❌ Error updating habit: {e}[/red]")
+                else:
+                    # Dummy mode update
+                    selected_habit.name = Prompt.ask("New name", default=selected_habit.name)
+                    selected_habit.description = Prompt.ask("New description", default=selected_habit.description)
+                    selected_habit.period = Prompt.ask("New period", choices=["daily", "weekly"], default=selected_habit.period)
+                    self.console.print("[green]✅ Habit updated successfully! (Demo mode)[/green]")
+            else:
+                self.console.print("[red]Invalid habit number![/red]")
+        except KeyboardInterrupt:
+            self.console.print("\n[yellow]Edit cancelled[/yellow]")
+        except Exception as e:
+            self.console.print(f"[red]❌ Error: {e}[/red]")
+            
+        input("\nPress Enter to continue...")
+
+    def delete_habit(self, habits):
+        """Delete a habit"""
+        if not habits:
+            self.console.print("[yellow]No habits to delete![/yellow]")
+            input("\nPress Enter to continue...")
+            return
+            
+        self.console.print("\n[bold red]⚠️  Select habit to delete:[/bold red]")
+        
+        # Show habits with numbers
+        for i, habit in enumerate(habits, 1):
+            name = habit.habit_name if self.backend_ready else habit.name
+            self.console.print(f"{i}. {name}")
+        
+        try:
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                habit_name = selected_habit.habit_name if self.backend_ready else selected_habit.name
+                
+                if Confirm.ask(f"Are you sure you want to delete '{habit_name}'?"):
+                    if self.backend_ready:
+                        try:
+                            success = self.habit_service.delete_habit(selected_habit.habit_id)
+                            if success:
+                                self.console.print(f"[green]✅ Habit '{habit_name}' deleted successfully![/green]")
+                            else:
+                                self.console.print("[red]❌ Failed to delete habit[/red]")
+                        except Exception as e:
+                            self.console.print(f"[red]❌ Error deleting habit: {e}[/red]")
+                    else:
+                        # Dummy mode delete
+                        self.dummy_habits.remove(selected_habit)
+                        self.console.print(f"[green]✅ Habit '{habit_name}' deleted successfully! (Demo mode)[/green]")
+                else:
+                    self.console.print("[yellow]Delete cancelled[/yellow]")
+            else:
+                self.console.print("[red]Invalid habit number![/red]")
+        except KeyboardInterrupt:
+            self.console.print("\n[yellow]Delete cancelled[/yellow]")
+        except Exception as e:
+            self.console.print(f"[red]❌ Error: {e}[/red]")
+            
         input("\nPress Enter to continue...")
 
     def log_completion_menu(self):
-        """Menu for logging habit completions"""
-        self.console.clear()
-        self.show_header()
-        
-        self.console.print(Panel(
-            "[bold bright_yellow]Log Habit Completion[/bold bright_yellow]",
-            border_style="bright_yellow"
-        ))
-        
-        # Show today's habits
-        today_table = Table(
-            title="[bold]Today's Habits[/bold]",
-            box=box.ROUNDED,
-            border_style="bright_yellow"
-        )
-        
-        today_table.add_column("", width=3)
-        today_table.add_column("Habit", width=35)
-        today_table.add_column("Status", justify="center", width=15)
-        
-        for i, habit in enumerate(self.habits, 1):
-            if habit.period == "daily":
-                status = "[bright_green]✅ Done[/bright_green]" if i % 2 == 0 else "[dim]⏳ Pending[/dim]"
-                today_table.add_row(str(i), habit.name, status)
-        
-        self.console.print(today_table)
-        self.console.print()
-        
-        choice = Prompt.ask("Select habit to complete (or 'b' for back)", default="b")
-        if choice.lower() != 'b':
-            self.console.print(f"[bright_green]✅ Habit completed! Streak updated![/bright_green]")
+        """Menu for logging habit completions with backend integration"""
+        while True:
+            self.console.clear()
+            self.show_header()
+            
+            self.console.print(Panel(
+                "[bold bright_yellow]✅ Log Habit Completion[/bold bright_yellow]",
+                border_style="bright_yellow"
+            ))
+            
+            # Get habits and their completion status for today
+            if self.backend_ready:
+                try:
+                    habits = self.habit_service.get_all_habits()
+                    habits_due = self.habit_service.get_habits_due_today()
+                except Exception as e:
+                    self.console.print(f"❌ Error loading habits: {e}", style="bold red")
+                    input("\nPress Enter to continue...")
+                    return
+            else:
+                habits = self.dummy_habits
+                habits_due = [h for h in habits if h.period == "daily"]  # Simplified for demo
+            
+            if not habits:
+                self.console.print(Panel(
+                    Align.center("No habits found. Create your first habit!"),
+                    style="yellow"
+                ))
+                input("\nPress Enter to continue...")
+                return
+            
+            # Show today's habits with completion status
+            today_table = Table(
+                title="[bold]📅 Today's Habits[/bold]",
+                box=box.ROUNDED,
+                border_style="bright_yellow"
+            )
+            
+            today_table.add_column("#", width=3)
+            today_table.add_column("Habit", width=35)
+            today_table.add_column("Period", justify="center", width=10)
+            today_table.add_column("Status", justify="center", width=15)
+            today_table.add_column("Action", justify="center", width=12)
+            
+            for i, habit in enumerate(habits, 1):
+                if self.backend_ready:
+                    habit_name = habit.habit_name
+                    period = habit.period.value
+                    is_completed = self.completion_service.is_habit_completed_today(habit.habit_id)
+                else:
+                    habit_name = habit.name
+                    period = habit.period
+                    is_completed = i % 3 == 0  # Dummy completion status
+                
+                if is_completed:
+                    status = "[bright_green]✅ Done[/bright_green]"
+                    action = "[dim]Undo[/dim]"
+                elif habit in habits_due or not self.backend_ready:
+                    status = "[yellow]⏳ Due[/yellow]"
+                    action = "[green]Complete[/green]"
+                else:
+                    status = "[dim]➖ Not due[/dim]"
+                    action = "[dim]N/A[/dim]"
+                
+                today_table.add_row(str(i), habit_name, period, status, action)
+            
+            self.console.print(today_table)
+            
+            # Menu options
+            self.console.print("\n[bold bright_yellow]Options:[/bold bright_yellow]")
+            self.console.print("• Enter habit number to complete/undo")
+            self.console.print("• 'a' - Mark all due habits as complete")
+            self.console.print("• 's' - Show completion calendar")
+            self.console.print("• 'b' - Back to main menu")
+            
+            choice = Prompt.ask("\nWhat would you like to do?", default="b")
+            
+            if choice.lower() == 'b':
+                break
+            elif choice.lower() == 'a':
+                self._complete_all_due_habits(habits_due)
+            elif choice.lower() == 's':
+                self._show_completion_calendar(habits)
+            elif choice.isdigit():
+                habit_num = int(choice)
+                if 1 <= habit_num <= len(habits):
+                    self._toggle_habit_completion(habits[habit_num - 1])
+                else:
+                    self.console.print("[red]Invalid habit number![/red]")
+                    input("\nPress Enter to continue...")
+            else:
+                self.console.print("[red]Invalid choice![/red]")
+                input("\nPress Enter to continue...")
+
+    def _complete_all_due_habits(self, habits_due):
+        """Complete all habits that are due today"""
+        if not habits_due:
+            self.console.print("[yellow]No habits are due today![/yellow]")
             input("\nPress Enter to continue...")
+            return
+        
+        completed_count = 0
+        for habit in habits_due:
+            try:
+                if self.backend_ready:
+                    if not self.completion_service.is_habit_completed_today(habit.habit_id):
+                        self.completion_service.complete_habit(habit.habit_id)
+                        completed_count += 1
+                else:
+                    # Dummy mode
+                    completed_count += 1
+            except Exception as e:
+                self.console.print(f"[red]❌ Error completing {habit.habit_name if self.backend_ready else habit.name}: {e}[/red]")
+        
+        if completed_count > 0:
+            self.console.print(f"[green]✅ Completed {completed_count} habits![/green]")
+        else:
+            self.console.print("[yellow]All due habits were already completed![/yellow]")
+        
+        input("\nPress Enter to continue...")
+
+    def _toggle_habit_completion(self, habit):
+        """Toggle completion status for a habit"""
+        try:
+            if self.backend_ready:
+                habit_name = habit.habit_name
+                is_completed = self.completion_service.is_habit_completed_today(habit.habit_id)
+                
+                if is_completed:
+                    # Uncomplete the habit
+                    success = self.completion_service.uncomplete_habit(habit.habit_id)
+                    if success:
+                        self.console.print(f"[yellow]↩️  Unmarked '{habit_name}' as completed[/yellow]")
+                    else:
+                        self.console.print(f"[red]❌ Failed to unmark '{habit_name}'[/red]")
+                else:
+                    # Complete the habit
+                    notes = Prompt.ask("Add notes (optional)", default="")
+                    completion = self.completion_service.complete_habit(habit.habit_id, notes=notes)
+                    self.console.print(f"[green]✅ Completed '{habit_name}'! 🎉[/green]")
+                    
+            else:
+                # Dummy mode
+                habit_name = habit.name
+                self.console.print(f"[green]✅ Completed '{habit_name}' (Demo mode)![/green]")
+                
+        except DatabaseException as e:
+            if "already completed" in str(e).lower():
+                self.console.print(f"[yellow]'{habit_name}' is already completed today![/yellow]")
+            else:
+                self.console.print(f"[red]❌ Database error: {e}[/red]")
+        except Exception as e:
+            self.console.print(f"[red]❌ Error: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_completion_calendar(self, habits):
+        """Show a completion calendar for habits"""
+        if not habits:
+            self.console.print("[yellow]No habits to show![/yellow]")
+            input("\nPress Enter to continue...")
+            return
+        
+        self.console.print("\n[bold bright_cyan]Select habit for calendar view:[/bold bright_cyan]")
+        for i, habit in enumerate(habits, 1):
+            name = habit.habit_name if self.backend_ready else habit.name
+            self.console.print(f"{i}. {name}")
+        
+        try:
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                
+                if self.backend_ready:
+                    # Show real calendar
+                    today = date.today()
+                    calendar_data = self.completion_service.get_completion_calendar(
+                        selected_habit.habit_id, today.year, today.month
+                    )
+                    
+                    self.console.print(f"\n[bold]{selected_habit.habit_name} - {today.strftime('%B %Y')}[/bold]")
+                    
+                    # Create calendar display
+                    calendar_table = Table(show_header=True, box=box.ROUNDED)
+                    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    for day in days:
+                        calendar_table.add_column(day, justify="center", width=5)
+                    
+                    # Add calendar rows (simplified version)
+                    week_days = []
+                    for day, completed in calendar_data.items():
+                        status = "✅" if completed else "⬜"
+                        week_days.append(f"{day}\n{status}")
+                        
+                        if len(week_days) == 7:
+                            calendar_table.add_row(*week_days)
+                            week_days = []
+                    
+                    # Add remaining days
+                    if week_days:
+                        while len(week_days) < 7:
+                            week_days.append("")
+                        calendar_table.add_row(*week_days)
+                    
+                    self.console.print(calendar_table)
+                else:
+                    # Dummy calendar
+                    self.console.print(f"\n[bold]{selected_habit.name} - Demo Calendar[/bold]")
+                    self.console.print("📅 Calendar view would show completion history here")
+                
+        except Exception as e:
+            self.console.print(f"[red]❌ Error showing calendar: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
 
     def view_analytics_menu(self):
-        """Display progress and analytics"""
+        """Display progress and analytics with backend integration"""
         self.console.clear()
         self.show_header()
+        
+        # Get habits data
+        if self.backend_ready:
+            try:
+                habits = self.habit_service.get_all_habits()
+                # Get analytics data from backend
+                analytics_data = self.analytics_service.get_all_habits_analytics()
+            except Exception as e:
+                self.console.print(f"❌ Error loading analytics: {e}", style="bold red")
+                habits = []
+                analytics_data = []
+        else:
+            habits = self.dummy_habits
+            analytics_data = []  # Simplified analytics for dummy data
+        
+        if not habits:
+            self.console.print(Panel(
+                Align.center("No habits found. Create your first habit to see analytics!"),
+                style="yellow"
+            ))
+            input("\nPress Enter to continue...")
+            return
         
         # Create analytics dashboard
         analytics_layout = Table.grid(padding=1)
@@ -271,13 +679,30 @@ class HabitTrackerCLI:
         streaks_table = Table(box=box.ROUNDED, border_style="bright_blue")
         streaks_table.add_column("Habit", width=25)
         streaks_table.add_column("Current Streak", justify="center", width=15)
+        streaks_table.add_column("Completion Rate", justify="center", width=15)
         
-        for habit in sorted(self.habits, key=lambda x: x.streak, reverse=True):
-            streak_color = "bright_green" if habit.streak >= 7 else "bright_yellow" if habit.streak >= 3 else "white"
-            streaks_table.add_row(
-                habit.name,
-                f"[{streak_color}]{habit.streak} days[/{streak_color}]"
-            )
+        if self.backend_ready and analytics_data:
+            # Use real analytics data
+            for analytics in sorted(analytics_data, key=lambda x: x.current_streak, reverse=True):
+                streak_color = "bright_green" if analytics.current_streak >= 7 else "bright_yellow" if analytics.current_streak >= 3 else "white"
+                rate_color = "bright_green" if analytics.completion_rate >= 80 else "bright_yellow" if analytics.completion_rate >= 60 else "white"
+                
+                streaks_table.add_row(
+                    analytics.habit_name,
+                    f"[{streak_color}]{analytics.current_streak}[/{streak_color}]",
+                    f"[{rate_color}]{analytics.completion_rate:.1f}%[/{rate_color}]"
+                )
+        else:
+            # Use dummy data
+            for habit in sorted(habits, key=lambda x: x.streak, reverse=True):
+                habit_name = habit.habit_name if self.backend_ready else habit.name
+                streak_color = "bright_green" if habit.streak >= 7 else "bright_yellow" if habit.streak >= 3 else "white"
+                
+                streaks_table.add_row(
+                    habit_name,
+                    f"[{streak_color}]{habit.streak} days[/{streak_color}]",
+                    f"[dim]N/A[/dim]"
+                )
         
         streaks_panel = Panel(
             streaks_table,
@@ -286,10 +711,21 @@ class HabitTrackerCLI:
         )
         
         # Stats panel
-        total_habits = len(self.habits)
-        daily_habits = len([h for h in self.habits if h.period == "daily"])
-        weekly_habits = len([h for h in self.habits if h.period == "weekly"])
-        avg_streak = sum(h.streak for h in self.habits) / total_habits if total_habits > 0 else 0
+        total_habits = len(habits)
+        if self.backend_ready:
+            daily_habits = len([h for h in habits if h.period == HabitPeriod.DAILY])
+            weekly_habits = len([h for h in habits if h.period == HabitPeriod.WEEKLY])
+            if analytics_data:
+                avg_completion_rate = sum(a.completion_rate for a in analytics_data) / len(analytics_data)
+                max_streak = max(a.current_streak for a in analytics_data) if analytics_data else 0
+            else:
+                avg_completion_rate = 0
+                max_streak = 0
+        else:
+            daily_habits = len([h for h in habits if h.period == "daily"])
+            weekly_habits = len([h for h in habits if h.period == "weekly"])
+            avg_completion_rate = 75.0  # Dummy value
+            max_streak = max(h.streak for h in habits) if habits else 0
         
         stats_text = f"""
 [bold]📊 Statistics[/bold]
@@ -297,8 +733,8 @@ class HabitTrackerCLI:
 Total Habits: [bright_cyan]{total_habits}[/bright_cyan]
 Daily Habits: [bright_yellow]{daily_habits}[/bright_yellow]
 Weekly Habits: [bright_magenta]{weekly_habits}[/bright_magenta]
-Average Streak: [bright_green]{avg_streak:.1f} days[/bright_green]
-Longest Streak: [bright_red]{max(h.streak for h in self.habits) if self.habits else 0} days[/bright_red]
+Avg Completion Rate: [bright_green]{avg_completion_rate:.1f}%[/bright_green]
+Highest Streak: [bright_red]{max_streak} days[/bright_red]
         """
         
         stats_panel = Panel(
@@ -309,11 +745,162 @@ Longest Streak: [bright_red]{max(h.streak for h in self.habits) if self.habits e
         analytics_layout.add_row(streaks_panel, stats_panel)
         self.console.print(analytics_layout)
         
-        self.console.print()
-        input("Press Enter to continue...")
+        # Show additional options for backend mode
+        if self.backend_ready:
+            self.console.print("\n[bold bright_cyan]Analytics Options:[/bold bright_cyan]")
+            self.console.print("1. 📈 View detailed habit trends")
+            self.console.print("2. 🏆 Show difficulty rankings")
+            self.console.print("3. 💡 Get personalized recommendations")
+            self.console.print("4. 🔙 Back to main menu")
+            
+            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"], default="4")
+            
+            if choice == "1":
+                self._show_habit_trends()
+            elif choice == "2":
+                self._show_difficulty_rankings(analytics_data)
+            elif choice == "3":
+                self._show_recommendations(analytics_data)
+        else:
+            self.console.print()
+            input("Press Enter to continue...")
+    
+    def _show_habit_trends(self):
+        """Show habit trends over time"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            
+            self.console.print("\n[bold bright_cyan]Select habit for trend analysis:[/bold bright_cyan]")
+            for i, habit in enumerate(habits, 1):
+                self.console.print(f"{i}. {habit.habit_name}")
+            
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                trends = self.analytics_service.get_habit_trends(selected_habit.habit_id)
+                
+                self.console.print(f"\n[bold]{selected_habit.habit_name} - Weekly Trends[/bold]")
+                
+                trends_table = Table(box=box.ROUNDED)
+                trends_table.add_column("Week", justify="center")
+                trends_table.add_column("Completions", justify="center")
+                trends_table.add_column("Rate", justify="center")
+                trends_table.add_column("Trend", justify="center")
+                
+                for i, trend in enumerate(trends):
+                    week_num = f"Week {len(trends) - i}"
+                    completions = str(trend['completions'])
+                    rate = f"{trend['completion_rate']}%"
+                    
+                    if i == 0:  # Most recent week
+                        trend_indicator = "📈" if trend['completion_rate'] > 70 else "📉" if trend['completion_rate'] < 50 else "➖"
+                    else:
+                        prev_rate = trends[i-1]['completion_rate']
+                        trend_indicator = "⬆️" if trend['completion_rate'] > prev_rate else "⬇️" if trend['completion_rate'] < prev_rate else "➖"
+                    
+                    trends_table.add_row(week_num, completions, rate, trend_indicator)
+                
+                self.console.print(trends_table)
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error showing trends: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+    
+    def _show_difficulty_rankings(self, analytics_data):
+        """Show habits ranked by difficulty"""
+        if not analytics_data:
+            self.console.print("[yellow]No analytics data available[/yellow]")
+            input("\nPress Enter to continue...")
+            return
+        
+        # Sort by completion rate (lower = more difficult)
+        sorted_habits = sorted(analytics_data, key=lambda x: x.completion_rate)
+        
+        self.console.print("\n[bold red]🏆 Habit Difficulty Rankings[/bold red]")
+        
+        difficulty_table = Table(box=box.ROUNDED, border_style="red")
+        difficulty_table.add_column("Rank", justify="center", width=6)
+        difficulty_table.add_column("Habit", width=30)
+        difficulty_table.add_column("Completion Rate", justify="center", width=15)
+        difficulty_table.add_column("Difficulty", justify="center", width=15)
+        
+        for i, analytics in enumerate(sorted_habits, 1):
+            rank = f"#{i}"
+            rate = f"{analytics.completion_rate:.1f}%"
+            difficulty = analytics.get_difficulty_level()
+            
+            # Color coding for difficulty
+            if difficulty in ["Very Difficult", "Difficult"]:
+                difficulty_color = "red"
+            elif difficulty == "Challenging":
+                difficulty_color = "yellow"
+            elif difficulty == "Moderate":
+                difficulty_color = "blue"
+            else:
+                difficulty_color = "green"
+            
+            difficulty_table.add_row(
+                rank,
+                analytics.habit_name,
+                rate,
+                f"[{difficulty_color}]{difficulty}[/{difficulty_color}]"
+            )
+        
+        self.console.print(difficulty_table)
+        input("\nPress Enter to continue...")
+    
+    def _show_recommendations(self, analytics_data):
+        """Show personalized recommendations"""
+        if not analytics_data:
+            self.console.print("[yellow]No analytics data available[/yellow]")
+            input("\nPress Enter to continue...")
+            return
+        
+        try:
+            # Get recommendations from analytics service
+            weekly_summary = self.analytics_service.get_weekly_progress_summary()
+            
+            self.console.print("\n[bold bright_magenta]💡 Personalized Recommendations[/bold bright_magenta]")
+            
+            recommendations = []
+            
+            # Analyze completion rates
+            struggling_habits = [a for a in analytics_data if a.completion_rate < 40]
+            excellent_habits = [a for a in analytics_data if a.completion_rate > 85]
+            
+            if struggling_habits:
+                habit_names = [h.habit_name for h in struggling_habits[:2]]
+                recommendations.append(f"🎯 Focus on: {', '.join(habit_names)} - they need the most attention")
+            
+            if excellent_habits:
+                recommendations.append(f"🌟 Great job with {len(excellent_habits)} habits! Keep up the momentum")
+            
+            # Streak recommendations
+            no_streak_habits = [a for a in analytics_data if a.current_streak == 0]
+            if no_streak_habits:
+                recommendations.append("🔥 Try to build a streak with at least one habit this week")
+            
+            # Balance recommendations
+            total_completion_rate = sum(a.completion_rate for a in analytics_data) / len(analytics_data)
+            if total_completion_rate < 60:
+                recommendations.append("📉 Consider reducing the number of habits to focus on consistency")
+            elif total_completion_rate > 85:
+                recommendations.append("📈 You're doing amazing! Consider adding a new challenging habit")
+            
+            if not recommendations:
+                recommendations.append("✨ You're on the right track! Keep maintaining your habits")
+            
+            for i, rec in enumerate(recommendations, 1):
+                self.console.print(f"{i}. {rec}")
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error generating recommendations: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
 
     def search_habits_menu(self):
-        """Search and filter habits"""
+        """Search and filter habits with backend integration"""
         self.console.clear()
         self.show_header()
         
@@ -322,26 +909,104 @@ Longest Streak: [bright_red]{max(h.streak for h in self.habits) if self.habits e
             border_style="bright_cyan"
         ))
         
-        search_term = Prompt.ask("Enter search term (or press Enter to see all)")
+        search_term = Prompt.ask("Enter search term (or press Enter to see all)", default="")
         
-        # Simple search simulation
-        filtered_habits = [h for h in self.habits if search_term.lower() in h.name.lower()] if search_term else self.habits
+        # Get habits and perform search
+        if self.backend_ready:
+            try:
+                if search_term.strip():
+                    filtered_habits = self.habit_service.search_habits(search_term)
+                else:
+                    filtered_habits = self.habit_service.get_all_habits()
+            except Exception as e:
+                self.console.print(f"❌ Error searching habits: {e}", style="bold red")
+                filtered_habits = []
+        else:
+            # Simple search simulation for dummy data
+            if search_term.strip():
+                filtered_habits = [h for h in self.dummy_habits if search_term.lower() in h.name.lower()]
+            else:
+                filtered_habits = self.dummy_habits
         
         if filtered_habits:
             results_table = Table(box=box.ROUNDED, border_style="bright_cyan")
             results_table.add_column("Habit", width=30)
             results_table.add_column("Description", width=35)
             results_table.add_column("Period", justify="center", width=10)
+            results_table.add_column("Status", justify="center", width=10)
             
             for habit in filtered_habits:
-                results_table.add_row(habit.name, habit.description, habit.period)
+                if self.backend_ready:
+                    habit_name = habit.habit_name
+                    description = habit.description
+                    period = habit.period.value if hasattr(habit.period, 'value') else str(habit.period)
+                    status = "✅ Active" if habit.is_active else "❌ Inactive"
+                else:
+                    habit_name = habit.name
+                    description = habit.description
+                    period = habit.period
+                    status = "✅ Active"
+                
+                results_table.add_row(habit_name, description, period, status)
             
-            self.console.print(results_table)
+            results_panel = Panel(
+                results_table,
+                title=f"[bold bright_cyan]🔍 Search Results ({len(filtered_habits)} found)[/bold bright_cyan]",
+                border_style="bright_cyan"
+            )
+            self.console.print(results_panel)
+            
+            # Show additional filter options
+            self.console.print("\n[bold bright_cyan]Filter Options:[/bold bright_cyan]")
+            self.console.print("1. 📅 Filter by daily habits only")
+            self.console.print("2. 📆 Filter by weekly habits only")
+            self.console.print("3. 🔄 Search again")
+            self.console.print("4. 🔙 Back to main menu")
+            
+            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"], default="4")
+            
+            if choice == "1":
+                self._filter_by_period(filtered_habits, "daily")
+            elif choice == "2":
+                self._filter_by_period(filtered_habits, "weekly")
+            elif choice == "3":
+                self.search_habits_menu()  # Recursive call for new search
+            # Choice 4 (back) will naturally exit the method
+            
         else:
-            self.console.print("[yellow]No habits found matching your search.[/yellow]")
+            no_results_panel = Panel(
+                Align.center(f"No habits found matching '{search_term}'" if search_term else "No habits available"),
+                style="yellow",
+                title="🔍 Search Results"
+            )
+            self.console.print(no_results_panel)
+            input("\nPress Enter to continue...")
+    
+    def _filter_by_period(self, habits, period_filter):
+        """Filter habits by period"""
+        if self.backend_ready:
+            filtered = [h for h in habits if h.period.value == period_filter]
+        else:
+            filtered = [h for h in habits if h.period == period_filter]
         
-        self.console.print()
-        input("Press Enter to continue...")
+        if filtered:
+            self.console.print(f"\n[bold bright_magenta]📅 {period_filter.title()} Habits ({len(filtered)} found)[/bold bright_magenta]")
+            
+            for i, habit in enumerate(filtered, 1):
+                if self.backend_ready:
+                    name = habit.habit_name
+                    desc = habit.description
+                else:
+                    name = habit.name
+                    desc = habit.description
+                
+                self.console.print(f"{i}. [bold]{name}[/bold]")
+                if desc:
+                    self.console.print(f"   [dim]{desc}[/dim]")
+        else:
+            self.console.print(f"[yellow]No {period_filter} habits found[/yellow]")
+        
+        input("\nPress Enter to continue...")
 
     def settings_menu(self):
         """Settings menu"""
