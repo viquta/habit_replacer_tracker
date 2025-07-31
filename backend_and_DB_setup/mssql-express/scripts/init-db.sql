@@ -13,26 +13,7 @@ GO
 USE HabitTrackerDB;
 GO
 
--- Create application-specific login (server-level)
-IF NOT EXISTS (SELECT name FROM sys.server_principals WHERE name = 'habit_app_user')
-BEGIN
-    CREATE LOGIN habit_app_user WITH PASSWORD = 'HabitApp!Secure2025';
-END
-GO
-
--- Create database user for the login
-IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = 'habit_app_user')
-BEGIN
-    CREATE USER habit_app_user FOR LOGIN habit_app_user;
-END
-GO
-
--- Create application role with minimal required permissions
-IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = 'habit_app_role')
-BEGIN
-    CREATE ROLE habit_app_role;
-END
-GO
+--using windows authentication for the application role so i dont need to make a user
 
 -- Add user to the application role
 ALTER ROLE habit_app_role ADD MEMBER habit_app_user;
