@@ -11,10 +11,11 @@ import os
 
 # Add the parent directory to the path to import db_connection
 db_scripts_path = os.path.join(os.path.dirname(__file__), '..', 'backend_and_DB_setup', 'mssql-express', 'scripts')
-sys.path.append(db_scripts_path)
+if db_scripts_path not in sys.path:
+    sys.path.insert(0, db_scripts_path)
 
 try:
-    from db_connection import get_connection
+    from db_connection import get_connection  # type: ignore
 except ImportError:
     # Fallback if db_connection is not available
     def get_connection():

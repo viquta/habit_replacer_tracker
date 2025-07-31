@@ -33,8 +33,8 @@
             [ ] are analytics queries optimized for performance?
 - [ ] **Analytics Module**: Use functional programming paradigm
   - Return list of current habits, periodicity, streaks, longest streak, etc.
-            [ ] are analytics functions pure and stateless?
-            [ ] can you get habit statistics through the CLI?
+            [x] are analytics functions pure and stateless?
+            [x] can you get habit statistics through the CLI?
             [ ] do analytics calculations handle edge cases properly?
 
 ---
