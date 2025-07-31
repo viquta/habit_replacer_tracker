@@ -42,6 +42,3 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 Created by [viquta](https://github.com/viquta) for International University.  
 For questions or suggestions, open an issue or contact me via GitHub.
 
----
-
-Would you like this added as a pull request, or do you want to edit it yourself? If you want it customized further (e.g., add screenshots, more details, etc.), just let me know!
