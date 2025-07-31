@@ -1,0 +1,13 @@
+# Environment files with sensitive data
+.env
+
+# Docker volumes
+data/
+logs/
+
+# MacOS
+.DS_Store
+
+# Backup files
+*.bak
+*.backup
