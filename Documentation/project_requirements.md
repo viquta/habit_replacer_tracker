@@ -8,12 +8,14 @@
 
 **University Project**: Make a Python backend for a habit tracking app which I can roll out later.
 
+**App Philosophy**: Thus, the goal for this app is to give the user a smooth experience to track and replace bad habits, with good ones. The smoothness part comes from the fact that the app will assume that the user is performing the habit, unless they log in that they have not performed the routine.
+
 ---
 
 ## Essential Functionalities Checklist
 
 ### Core Features
-- [ ] **CLI Interface**: No need for GUI, only CLI (for uni version at least)
+- [done ] **CLI Interface**: No need for GUI, only CLI (for uni version at least)
 - [ ] **Periodic Habits**: Habits must be "periodic" (example: brushing teeth *every day*)
 - [ ] **Habit Management**: User can define new habits
 - [ ] **Task Completion**: Task can be completed (checked-off) at any point in time
