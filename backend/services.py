@@ -3,7 +3,7 @@ Business Logic Services for Habit Tracker Application
 Implements the core business logic and follows the application philosophy:
 "Assume user is performing the habit unless they log that they have not performed the routine"
 """
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple #why is optional and dataetime now used?
 from datetime import datetime, date, timedelta
 from backend.models import (
     User, Habit, HabitCompletion, HabitPeriod, HabitAnalytics,
@@ -100,7 +100,7 @@ class HabitService:
     def delete_habit(self, habit_id: int) -> bool:
         """Soft delete a habit"""
         habit = self.get_habit_by_id(habit_id)  # Verify habit exists
-        return self.habit_dao.delete_habit(habit_id)
+        return self.habit_dao.delete_habit(habit_id) #what does this do?
     
     def search_habits(self, search_term: str) -> List[Habit]:
         """Search habits by name or description"""
