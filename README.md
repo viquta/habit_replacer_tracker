@@ -162,7 +162,10 @@ When you start the application, you'll see the main menu with these options:
 
 1. Select option **1** (Add New Habit)
 2. Enter a descriptive name (e.g., "Morning Exercise", "Read for 30 minutes")
-3. Add an optional description explaining the habit
+3. Add a description that includes:
+   - **Trigger** (when/where): "After morning coffee", "Before bed", "When I arrive at office"
+   - **Reward** (why/benefit): "to stay healthy", "to grow knowledge", "to reduce stress"
+   - **Example**: "After morning coffee (trigger), read for 30 minutes to grow knowledge (reward)"
 4. Choose the frequency:
    - **Daily**: Habit performed every day
    - **Weekly**: Habit performed once per week
@@ -173,8 +176,17 @@ When you start the application, you'll see the main menu with these options:
 #### Marking Habits Complete ✅
 - Select option **3** (Mark Habit as Complete)
 - Choose the habit from the list
-- Add optional notes about your experience
+- Add optional notes about your experience:
+  - What triggered the habit?
+  - How did it feel during/after?
+  - What reward or benefit did you notice?
 - The completion will be logged for today's date
+
+#### Viewing Your Notes 📝
+- In the completion menu, select **'n'** to view recent notes
+- Choose a habit to see your past completion notes
+- Review your triggers, experiences, and rewards over time
+- Select specific dates to view full notes if truncated
 
 #### Logging Missed Days ❌
 - Select option **4** (Mark Habit as Not Done)

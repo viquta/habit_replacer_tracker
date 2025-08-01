@@ -255,7 +255,9 @@ class HabitTrackerCLI:
                 input("\nPress Enter to continue...")
                 return
                 
-            description = Prompt.ask("📝 Description (optional)", default="")
+            self.console.print("\n[dim]💡 Tip: A good description includes the trigger (when/where) and reward (why/benefit)[/dim]")
+            self.console.print("[dim]   Example: 'After morning coffee (trigger), read for 30 minutes to grow knowledge (reward)'[/dim]")
+            description = Prompt.ask("📝 Description with trigger & reward (optional)", default="")
             
             # Improved period selection with numbered options
             self.console.print("\n⏰ Period:")
@@ -316,7 +318,9 @@ class HabitTrackerCLI:
                 current_period = selected_habit.period.value
                 
                 new_name = Prompt.ask("New name", default=current_name)
-                new_desc = Prompt.ask("New description", default=current_desc)
+                
+                self.console.print("\n[dim]💡 Tip: Include trigger (when/where) and reward (why/benefit) in your description[/dim]")
+                new_desc = Prompt.ask("New description with trigger & reward", default=current_desc)
                 new_period = Prompt.ask("New period", choices=["daily", "weekly"], default=current_period)
                 
                 try:
@@ -440,11 +444,12 @@ class HabitTrackerCLI:
             
             self.console.print(today_table)
             
-            # Menu options
+            # Show additional options
             self.console.print("\n[bold bright_yellow]Options:[/bold bright_yellow]")
             self.console.print("• Enter habit number to complete/undo")
             self.console.print("• 'a' - Mark all due habits as complete")
             self.console.print("• 's' - Show completion calendar")
+            self.console.print("• 'n' - View recent notes")
             self.console.print("• 'b' - Back to main menu")
             
             choice = Prompt.ask("\nWhat would you like to do?", default="b")
@@ -455,6 +460,8 @@ class HabitTrackerCLI:
                 self._complete_all_due_habits(habits_due)
             elif choice.lower() == 's':
                 self._show_completion_calendar(habits)
+            elif choice.lower() == 'n':
+                self._show_recent_notes(habits)
             elif choice.isdigit():
                 habit_num = int(choice)
                 if 1 <= habit_num <= len(habits):
@@ -504,7 +511,8 @@ class HabitTrackerCLI:
                     self.console.print(f"[red]❌ Failed to unmark '{habit_name}'[/red]")
             else:
                 # Complete the habit
-                notes = Prompt.ask("Add notes (optional)", default="")
+                self.console.print("[dim]💡 Notes tip: What triggered this habit? How did it feel? What reward did you get?[/dim]")
+                notes = Prompt.ask("Add notes about trigger/experience/reward (optional)", default="")
                 completion = self.completion_service.complete_habit(habit.habit_id, notes=notes)
                 self.console.print(f"[green]✅ Completed '{habit_name}'! 🎉[/green]")
                     
@@ -569,6 +577,73 @@ class HabitTrackerCLI:
                 
         except Exception as e:
             self.console.print(f"[red]❌ Error showing calendar: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_recent_notes(self, habits):
+        """Show recent completion notes for habits"""
+        if not habits:
+            self.console.print("[yellow]No habits to show notes for![/yellow]")
+            input("\nPress Enter to continue...")
+            return
+        
+        self.console.print("\n[bold bright_cyan]Select habit to view notes:[/bold bright_cyan]")
+        for i, habit in enumerate(habits, 1):
+            name = habit.habit_name
+            self.console.print(f"{i}. {name}")
+        
+        try:
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                
+                # Get recent completions with notes
+                completions = self.completion_service.get_habit_completions(
+                    selected_habit.habit_id, limit=10
+                )
+                
+                # Filter completions that have notes
+                completions_with_notes = [c for c in completions if c.notes and c.notes.strip()]
+                
+                if completions_with_notes:
+                    self.console.print(f"\n[bold bright_cyan]📝 Recent Notes for '{selected_habit.habit_name}'[/bold bright_cyan]")
+                    
+                    notes_table = Table(box=box.ROUNDED, border_style="bright_cyan")
+                    notes_table.add_column("Date", width=12)
+                    notes_table.add_column("Notes", width=60)
+                    
+                    for completion in completions_with_notes:
+                        completion_date = completion.completion_date.strftime("%Y-%m-%d")
+                        notes_text = completion.notes[:57] + "..." if len(completion.notes) > 60 else completion.notes
+                        notes_table.add_row(completion_date, notes_text)
+                    
+                    self.console.print(notes_table)
+                    
+                    # Show option to view full notes
+                    if any(len(c.notes) > 60 for c in completions_with_notes):
+                        self.console.print("\n[dim]💡 Some notes are truncated. Select a date to view full notes.[/dim]")
+                        
+                        view_full = Prompt.ask("Enter date to view full notes (or press Enter to continue)", default="")
+                        if view_full:
+                            # Find completion by date
+                            selected_completion = next(
+                                (c for c in completions_with_notes 
+                                 if c.completion_date.strftime("%Y-%m-%d") == view_full), 
+                                None
+                            )
+                            if selected_completion:
+                                self.console.print(f"\n[bold]📅 {view_full} - Full Notes:[/bold]")
+                                self.console.print(Panel(selected_completion.notes, border_style="bright_green"))
+                            else:
+                                self.console.print(f"[yellow]No completion found for date {view_full}[/yellow]")
+                else:
+                    self.console.print(f"\n[yellow]No notes found for '{selected_habit.habit_name}'[/yellow]")
+                    self.console.print("[dim]💡 Add notes when completing habits to track your triggers and rewards![/dim]")
+            else:
+                self.console.print("[red]Invalid habit number![/red]")
+                
+        except Exception as e:
+            self.console.print(f"[red]❌ Error showing notes: {e}[/red]")
         
         input("\nPress Enter to continue...")
 
