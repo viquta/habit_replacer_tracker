@@ -34,3 +34,8 @@ Notes:
   I should use sql for:
     basic aggregations (completion rates)
     Current/longest streaks
+
+
+
+1st august:
+functions from analytics.py arent used: Performance: Database calculations are faster than pulling all data into Python

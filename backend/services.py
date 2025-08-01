@@ -3,7 +3,7 @@ Business Logic Services for Habit Tracker Application
 Implements the core business logic and follows the application philosophy:
 "Assume user is performing the habit unless they log that they have not performed the routine"
 """
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple #why is optional and dataetime now used?
 from datetime import datetime, date, timedelta
 from backend.models import (
     User, Habit, HabitCompletion, HabitPeriod, HabitAnalytics,
@@ -100,7 +100,7 @@ class HabitService:
     def delete_habit(self, habit_id: int) -> bool:
         """Soft delete a habit"""
         habit = self.get_habit_by_id(habit_id)  # Verify habit exists
-        return self.habit_dao.delete_habit(habit_id)
+        return self.habit_dao.delete_habit(habit_id) #what does this do?
     
     def search_habits(self, search_term: str) -> List[Habit]:
         """Search habits by name or description"""
@@ -378,6 +378,57 @@ class HabitAnalyticsService:
             })
         
         return list(reversed(trends))  # Most recent week first
+
+    def calculate_habit_persistence_probability(self, habit_id: int) -> Dict[str, Any]:
+        """Calculate the probability that a habit will be maintained based on historical patterns"""
+        from .analytics import calculate_habit_persistence_probability
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        completion_dates = [c.completion_date for c in completions]
+        
+        return calculate_habit_persistence_probability(completion_dates, habit.period.value, 4)
+    
+    def predict_habit_difficulty(self, habit_id: int) -> Dict[str, Any]:
+        """Predict difficulty level and provide insights for a habit"""
+        from .analytics import predict_habit_difficulty
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        
+        result = predict_habit_difficulty(habit, completions)
+        result['habit_name'] = habit.habit_name
+        return result
+    
+    def predict_streak_continuation(self, habit_id: int) -> Dict[str, Any]:
+        """Predict likelihood of continuing current streak"""
+        from .analytics import predict_streak_continuation
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        completion_dates = [c.completion_date for c in completions]
+        
+        # Get current streak
+        current_streaks = self.analytics_dao.get_current_streaks(self.user_service.get_current_user().user_id)
+        current_streak = next(
+            (s['current_streak'] for s in current_streaks if s['habit_id'] == habit_id), 0
+        )
+        
+        result = predict_streak_continuation(completion_dates, habit.period.value, current_streak)
+        result['habit_name'] = habit.habit_name
+        return result
 
 
 class SystemService:

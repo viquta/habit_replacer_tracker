@@ -13,23 +13,23 @@
 - [ ] **Habit Management**: User can define new habits
             [x] can you create habits through the CLI?
             [ ] does the backend validate habit input?
-            [ ] are habits stored properly in the database?
+            [x] are habits stored properly in the database?
 - [ ] **Task Completion**: Task can be completed (checked-off) at any point in time
-            [ ] can you mark habits as complete in the CLI?
+            [x] can you mark habits as complete in the CLI?
             [ ] does the backend record completion timestamps?
             [ ] are completions tracked in the database?
 
 ### Progress Tracking & Analytics
 - [ ] **Progress Tracking**: Ticking off habit activities for daily/weekly habits → tracking the progress + possibility of streaks of x periods
   - Example: After a week of completing habit x daily, you get a 7-day streak
-            [ ] can you view current streaks in the CLI?
+            [x] can you view current streaks in the CLI?
             [ ] does the backend calculate streaks correctly?
             [ ] are streak calculations accurate for both daily and weekly habits?
 - [ ] **Data Storage & Analysis**: Store tracking (habit created, description, times) and use for data analysis
         - Purpose: Not for marketing, but for giving statistical analysis of user's habit development
         - Metrics: Most difficult habit, easiest, longest habit streak, etc.
-            [ ] is all habit data properly stored with timestamps?
-            [ ] can the system identify patterns in habit completion?
+            [x] is all habit data properly stored with timestamps?
+            [x] can the system identify patterns in habit completion?
             [ ] are analytics queries optimized for performance?
 - [ ] **Analytics Module**: Use functional programming paradigm
   - Return list of current habits, periodicity, streaks, longest streak, etc.
@@ -45,7 +45,7 @@
 - [x] **Python Version**: At least Python version 3.7 (or later) + tools and libraries
 - [ ] **No Third-Party Tools**: No third-party habit tracking tools
 - [ ] **Programming Paradigm**: Use Object-Oriented programming
-- [ ] **Habit Periods**: Users should be able to create habit periods (daily/weekly)
+- [x] **Habit Periods**: Users should be able to create habit periods (daily/weekly)
 
 ### Documentation & Setup
 - [ ] **Installation Instructions**: Detailed + self-contained installation and run instructions

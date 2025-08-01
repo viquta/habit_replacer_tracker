@@ -337,17 +337,23 @@ class HabitCompletionDAO(BaseDAO):
         """Get completions for a specific habit"""
         with self.get_db_connection() as conn:
             cursor = conn.cursor()
-            query = """
-                SELECT CompletionID, HabitID, CompletionDate, Notes, CreatedAt
-                FROM HabitCompletions 
-                WHERE HabitID = ?
-                ORDER BY CompletionDate DESC
-            """
             
             if limit:
-                query = f"SELECT TOP {limit} " + query[6:]  # Replace SELECT with SELECT TOP N
-            
-            cursor.execute(query, habit_id)
+                query = """
+                    SELECT TOP (?) CompletionID, HabitID, CompletionDate, Notes, CreatedAt
+                    FROM HabitCompletions 
+                    WHERE HabitID = ?
+                    ORDER BY CompletionDate DESC
+                """
+                cursor.execute(query, (limit, habit_id))
+            else:
+                query = """
+                    SELECT CompletionID, HabitID, CompletionDate, Notes, CreatedAt
+                    FROM HabitCompletions 
+                    WHERE HabitID = ?
+                    ORDER BY CompletionDate DESC
+                """
+                cursor.execute(query, (habit_id,))
             
             completions = []
             for row in cursor.fetchall():

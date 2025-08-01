@@ -19,232 +19,396 @@ AnalyticsResult = Dict[str, Any]
 
 # Essential pure functions for analytics
 
-def calculate_streak_length(completion_dates: List[date], habit_period: str) -> int:
+def calculate_habit_persistence_probability(completion_dates: List[date], 
+                                         habit_period: str,
+                                         weeks_analyzed: int = 4) -> Dict[str, float]:
     """
-    Calculate current streak length from completion dates - pure function
-    Uses functional approach to find consecutive dates
+    Calculate probability that a habit will stick based on completion patterns
+    Uses statistical models based on habit formation research
     """
-    if not completion_dates:
-        return 0
+    if not completion_dates or weeks_analyzed < 2:
+        return {'probability': 0.0, 'confidence': 'low', 'factors': {}}
     
-    # Sort dates in descending order (most recent first)
-    sorted_dates = sorted(completion_dates, reverse=True)
+    # Week-by-week completion rates
+    weekly_rates = _calculate_weekly_completion_rates(completion_dates, habit_period, weeks_analyzed)
     
-    today = date.today()
-    streak = 0
+    if not weekly_rates:
+        return {'probability': 0.0, 'confidence': 'low', 'factors': {}}
     
-    if habit_period == 'daily':
-        expected_date = today
-        for completion_date in sorted_dates:
-            if completion_date == expected_date:
-                streak += 1
-                expected_date -= timedelta(days=1)
-            else:
-                break
-    else:  # weekly
-        # For weekly habits, check if completed in current week and previous weeks
-        current_week_start = today - timedelta(days=today.weekday())
-        week_start = current_week_start
-        
-        for completion_date in sorted_dates:
-            week_end = week_start + timedelta(days=6)
-            if week_start <= completion_date <= week_end:
-                streak += 1
-                week_start -= timedelta(days=7)  # Move to previous week
-            else:
-                break
+    # Trend analysis (improving, declining, stable)
+    trend_score = _calculate_trend_score(weekly_rates)
     
-    return streak
-
-
-def find_longest_streak(completion_dates: List[date], habit_period: str) -> Tuple[int, Optional[date], Optional[date]]:
-    """
-    Find the longest streak in the completion history - pure function
-    Returns (streak_length, start_date, end_date)
-    """
-    if not completion_dates:
-        return 0, None, None
+    # Consistency score (less variance = higher probability)
+    consistency_score = _calculate_consistency_score(weekly_rates)
     
-    sorted_dates = sorted(completion_dates)
+    # Recent performance weight (last 2 weeks matter more)
+    recent_performance = _calculate_recent_performance_weight(weekly_rates)
     
-    if habit_period == 'daily':
-        return _find_longest_daily_streak(sorted_dates)
-    else:  # weekly
-        return _find_longest_weekly_streak(sorted_dates)
-
-
-def _find_longest_daily_streak(sorted_dates: List[date]) -> Tuple[int, Optional[date], Optional[date]]:
-    """Find longest consecutive daily streak - pure function"""
-    if not sorted_dates:
-        return 0, None, None
+    # Combined probability model
+    base_probability = sum(weekly_rates) / len(weekly_rates) / 100  # Base completion rate
+    trend_modifier = trend_score * 0.3  # Positive trend increases probability
+    consistency_modifier = consistency_score * 0.2  # Consistency increases probability  
+    recency_modifier = recent_performance * 0.3  # Recent success increases probability
     
-    max_streak = 1
-    current_streak = 1
-    max_start = sorted_dates[0]
-    max_end = sorted_dates[0]
-    current_start = sorted_dates[0]
-    
-    for i in range(1, len(sorted_dates)):
-        expected_date = sorted_dates[i-1] + timedelta(days=1)
-        
-        if sorted_dates[i] == expected_date:
-            current_streak += 1
-        else:
-            if current_streak > max_streak:
-                max_streak = current_streak
-                max_start = current_start
-                max_end = sorted_dates[i-1]
-            current_streak = 1
-            current_start = sorted_dates[i]
-    
-    # Check final streak
-    if current_streak > max_streak:
-        max_streak = current_streak
-        max_start = current_start
-        max_end = sorted_dates[-1]
-    
-    return max_streak, max_start, max_end
-
-
-def _find_longest_weekly_streak(sorted_dates: List[date]) -> Tuple[int, Optional[date], Optional[date]]:
-    """Find longest consecutive weekly streak - pure function"""
-    if not sorted_dates:
-        return 0, None, None
-    
-    # Group dates by week
-    weeks = {}
-    for d in sorted_dates:
-        week_start = d - timedelta(days=d.weekday())
-        weeks[week_start] = d
-    
-    week_starts = sorted(weeks.keys())
-    
-    if len(week_starts) <= 1:
-        return len(week_starts), sorted_dates[0] if sorted_dates else None, sorted_dates[-1] if sorted_dates else None
-    
-    max_streak = 1
-    current_streak = 1
-    max_start_week = week_starts[0]
-    max_end_week = week_starts[0]
-    current_start_week = week_starts[0]
-    
-    for i in range(1, len(week_starts)):
-        expected_week = week_starts[i-1] + timedelta(days=7)
-        
-        if week_starts[i] == expected_week:
-            current_streak += 1
-        else:
-            if current_streak > max_streak:
-                max_streak = current_streak
-                max_start_week = current_start_week
-                max_end_week = week_starts[i-1]
-            current_streak = 1
-            current_start_week = week_starts[i]
-    
-    # Check final streak
-    if current_streak > max_streak:
-        max_streak = current_streak
-        max_start_week = current_start_week
-        max_end_week = week_starts[-1]
-    
-    return max_streak, weeks[max_start_week], weeks[max_end_week]
-
-
-def calculate_completion_rate(completions: CompletionList, habit_period: str, days_analyzed: int) -> float:
-    """
-    Calculate completion rate as a percentage - pure function
-    """
-    if days_analyzed <= 0:
-        return 0.0
-    
-    actual_completions = len(completions)
-    
-    if habit_period == 'daily':
-        expected_completions = days_analyzed
-    else:  # weekly
-        expected_completions = max(1, days_analyzed // 7)
-    
-    return (actual_completions / expected_completions) * 100 if expected_completions > 0 else 0.0
-
-
-# Main analytics pipeline function (used by CLI)
-def analyze_habits_comprehensive(habits: List[Habit], 
-                               all_completions: List[HabitCompletion],
-                               analysis_period_days: int = 28) -> AnalyticsResult:
-    """
-    Comprehensive habit analysis using functional programming pipeline
-    Pure function that processes all data without side effects
-    """
-    # Group completions by habit
-    completions_by_habit = {}
-    for completion in all_completions:
-        if completion.habit_id not in completions_by_habit:
-            completions_by_habit[completion.habit_id] = []
-        completions_by_habit[completion.habit_id].append(completion)
-    
-    # Calculate analytics for each active habit
-    habits_analytics = []
-    
-    for habit in habits:
-        if not habit.is_active:
-            continue
-            
-        habit_completions = completions_by_habit.get(habit.habit_id, [])
-        
-        # Filter completions to analysis period
-        end_date = date.today()
-        start_date = end_date - timedelta(days=analysis_period_days)
-        period_completions = [
-            c for c in habit_completions 
-            if start_date <= c.completion_date <= end_date
-        ]
-        
-        # Extract completion dates
-        all_completion_dates = [comp.completion_date for comp in habit_completions]
-        
-        current_streak = calculate_streak_length(all_completion_dates, habit.period.value)
-        longest_streak, streak_start, streak_end = find_longest_streak(
-            all_completion_dates, habit.period.value
-        )
-        completion_rate = calculate_completion_rate(
-            period_completions, habit.period.value, analysis_period_days
-        )
-        
-        analytics = HabitAnalytics(
-            habit_id=habit.habit_id,
-            habit_name=habit.habit_name,
-            period=habit.period.value,
-            current_streak=current_streak,
-            longest_streak=longest_streak,
-            total_completions=len(period_completions),
-            completion_rate=completion_rate,
-            longest_streak_start=streak_start,
-            longest_streak_end=streak_end
-        )
-        
-        habits_analytics.append(analytics)
-    
-    # Basic summary statistics
-    if habits_analytics:
-        avg_completion_rate = statistics.mean([h.completion_rate for h in habits_analytics])
-        max_current_streak = max([h.current_streak for h in habits_analytics])
-        max_longest_streak = max([h.longest_streak for h in habits_analytics])
-        total_completions = sum([h.total_completions for h in habits_analytics])
-    else:
-        avg_completion_rate = 0.0
-        max_current_streak = 0
-        max_longest_streak = 0
-        total_completions = 0
+    final_probability = min(0.95, max(0.05, 
+        base_probability + trend_modifier + consistency_modifier + recency_modifier
+    ))
     
     return {
-        'summary': {
-            'total_habits': len(habits_analytics),
-            'average_completion_rate': avg_completion_rate,
-            'highest_current_streak': max_current_streak,
-            'highest_all_time_streak': max_longest_streak,
-            'total_completions': total_completions
+        'probability': final_probability,
+        'confidence': _determine_confidence_level(len(completion_dates), weeks_analyzed),
+        'factors': {
+            'base_completion_rate': base_probability,
+            'trend_impact': trend_modifier,
+            'consistency_impact': consistency_modifier,
+            'recent_performance_impact': recency_modifier
         },
-        'individual_analytics': habits_analytics,
-        'analysis_period_days': analysis_period_days,
-        'generated_at': datetime.now().isoformat()
+        'weekly_rates': weekly_rates,
+        'trend_direction': 'improving' if trend_score > 0.1 else 'declining' if trend_score < -0.1 else 'stable'
     }
+
+
+def predict_habit_difficulty(habit: Habit, completion_history: List[HabitCompletion]) -> Dict[str, Any]:
+    """
+    Predict how difficult a habit will be based on early performance patterns
+    """
+    if len(completion_history) < 7:  # Need at least a week of data
+        return {'prediction': 'insufficient_data', 'confidence': 'low'}
+    
+    completion_dates = [c.completion_date for c in completion_history]
+    
+    # Early performance indicators
+    first_week_rate = _calculate_completion_rate_for_period(
+        completion_dates[:7], habit.period.value, 7
+    )
+    dropout_risk = _calculate_dropout_risk_score(completion_dates)
+    variability = _calculate_performance_variability(completion_dates)
+    
+    # Difficulty prediction model
+    if first_week_rate >= 85 and dropout_risk < 0.3:
+        difficulty = 'easy'
+    elif first_week_rate >= 65 and dropout_risk < 0.5:
+        difficulty = 'moderate'  
+    elif first_week_rate >= 45:
+        difficulty = 'challenging'
+    else:
+        difficulty = 'difficult'
+    
+    return {
+        'predicted_difficulty': difficulty,
+        'early_performance_rate': first_week_rate,
+        'dropout_risk_score': dropout_risk,
+        'performance_variability': variability,
+        'recommendations': _generate_difficulty_recommendations(difficulty, dropout_risk),
+        'confidence': 'high' if len(completion_history) >= 14 else 'medium'
+    }
+
+
+def predict_streak_continuation(completion_dates: List[date], 
+                              habit_period: str,
+                              current_streak: int) -> Dict[str, Any]:
+    """
+    Predict likelihood of continuing current streak
+    """
+    if current_streak == 0:
+        return {'probability': 0.0, 'reason': 'no_active_streak'}
+    
+    if len(completion_dates) < 7:
+        return {'probability': 0.5, 'reason': 'insufficient_data', 'confidence': 'low'}
+    
+    # Historical streak analysis
+    historical_streaks = _find_all_historical_streaks(completion_dates, habit_period)
+    
+    # Streak length vs continuation probability (longer streaks more likely to continue)
+    length_factor = min(0.9, current_streak / 21)  # 21-day habit formation
+    
+    # Historical performance at this streak length
+    historical_factor = _calculate_historical_continuation_rate(
+        historical_streaks, current_streak
+    )
+    
+    # Recent completion consistency
+    recent_dates = completion_dates[-14:] if len(completion_dates) >= 14 else completion_dates
+    recent_consistency = _calculate_recent_consistency(recent_dates, habit_period)
+    
+    continuation_probability = (length_factor * 0.4 + historical_factor * 0.4 + recent_consistency * 0.2)
+    
+    return {
+        'continuation_probability': continuation_probability,
+        'current_streak_length': current_streak,
+        'streak_momentum': 'strong' if continuation_probability > 0.7 else 'moderate' if continuation_probability > 0.4 else 'weak',
+        'factors': {
+            'length_advantage': length_factor,
+            'historical_performance': historical_factor,
+            'recent_consistency': recent_consistency
+        },
+        'milestone_predictions': _predict_milestone_achievements(current_streak, continuation_probability),
+        'confidence': 'high' if len(completion_dates) >= 21 else 'medium'
+    }
+
+
+# Helper functions for analytics calculations
+
+def _calculate_weekly_completion_rates(completion_dates: List[date], habit_period: str, weeks_back: int = 4) -> List[float]:
+    """Calculate completion rates for each week going back from today"""
+    if not completion_dates:
+        return []
+    
+    today = date.today()
+    weekly_rates = []
+    
+    for week_offset in range(weeks_back):
+        week_start = today - timedelta(days=today.weekday() + (week_offset * 7))
+        week_end = week_start + timedelta(days=6)
+        
+        # Count completions in this week
+        week_completions = [d for d in completion_dates if week_start <= d <= week_end]
+        
+        if habit_period.lower() == 'daily':
+            expected = 7
+            completion_rate = (len(week_completions) / 7) * 100
+        else:  # weekly
+            expected = 1
+            completion_rate = 100 if len(week_completions) >= 1 else 0
+        
+        weekly_rates.append(completion_rate)
+    
+    return list(reversed(weekly_rates))  # Most recent week last
+
+
+def _calculate_trend_score(weekly_rates: List[float]) -> float:
+    """Calculate if completion rates are trending up or down"""
+    if len(weekly_rates) < 2:
+        return 0.0
+    
+    # Simple linear trend calculation
+    x_values = list(range(len(weekly_rates)))
+    if len(set(weekly_rates)) == 1:  # All rates are the same
+        return 0.0
+    
+    # Calculate correlation coefficient as trend indicator
+    try:
+        correlation = statistics.correlation(x_values, weekly_rates)
+        return correlation  # Positive = improving trend, negative = declining
+    except statistics.StatisticsError:
+        return 0.0
+
+
+def _calculate_consistency_score(weekly_rates: List[float]) -> float:
+    """Calculate consistency score (lower variance = higher score)"""
+    if len(weekly_rates) < 2:
+        return 0.0
+    
+    try:
+        variance = statistics.variance(weekly_rates)
+        # Convert variance to consistency score (0-1, where 1 is most consistent)
+        max_possible_variance = 50 * 50  # Assuming max rate difference of 50%
+        consistency = max(0.0, 1.0 - (variance / max_possible_variance))
+        return consistency
+    except statistics.StatisticsError:
+        return 0.0
+
+
+def _calculate_recent_performance_weight(weekly_rates: List[float]) -> float:
+    """Weight recent performance more heavily"""
+    if len(weekly_rates) < 2:
+        return 0.0
+    
+    # Take last 2 weeks and weight them more
+    recent_weeks = weekly_rates[-2:]
+    recent_average = sum(recent_weeks) / len(recent_weeks)
+    
+    # Normalize to 0-1 scale
+    return recent_average / 100
+
+
+def _determine_confidence_level(data_points: int, weeks_analyzed: int) -> str:
+    """Determine confidence level based on amount of data"""
+    if data_points >= 21 and weeks_analyzed >= 4:
+        return 'high'
+    elif data_points >= 14 and weeks_analyzed >= 3:
+        return 'medium'
+    else:
+        return 'low'
+
+
+def _calculate_completion_rate_for_period(completion_dates: List[date], habit_period: str, days: int) -> float:
+    """Calculate completion rate for a specific period"""
+    if not completion_dates or days == 0:
+        return 0.0
+    
+    if habit_period.lower() == 'daily':
+        expected = days
+        actual = len(completion_dates)
+        return (actual / expected) * 100
+    else:  # weekly
+        expected_weeks = max(1, days // 7)
+        actual_weeks = len(set(d.isocalendar()[1] for d in completion_dates))
+        return (actual_weeks / expected_weeks) * 100
+
+
+def _calculate_dropout_risk_score(completion_dates: List[date]) -> float:
+    """Calculate risk of dropping the habit based on completion patterns"""
+    if len(completion_dates) < 7:
+        return 0.5  # Medium risk with insufficient data
+    
+    # Look for gaps in completion
+    sorted_dates = sorted(completion_dates)
+    gaps = []
+    
+    for i in range(1, len(sorted_dates)):
+        gap = (sorted_dates[i] - sorted_dates[i-1]).days
+        if gap > 1:  # More than 1 day gap
+            gaps.append(gap)
+    
+    if not gaps:
+        return 0.1  # Low risk if no gaps
+    
+    # Calculate average gap and convert to risk score
+    average_gap = sum(gaps) / len(gaps)
+    risk_score = min(0.9, average_gap / 10)  # Scale to 0-0.9
+    
+    return risk_score
+
+
+def _calculate_performance_variability(completion_dates: List[date]) -> float:
+    """Calculate how variable the performance is"""
+    if len(completion_dates) < 7:
+        return 0.5
+    
+    # Group by weeks and calculate weekly completion counts
+    weekly_counts = {}
+    for date_obj in completion_dates:
+        week_key = date_obj.isocalendar()[:2]  # (year, week)
+        weekly_counts[week_key] = weekly_counts.get(week_key, 0) + 1
+    
+    if len(weekly_counts) < 2:
+        return 0.0
+    
+    try:
+        counts = list(weekly_counts.values())
+        variance = statistics.variance(counts)
+        # Normalize variance to 0-1 scale
+        return min(1.0, variance / 10)
+    except statistics.StatisticsError:
+        return 0.5
+
+
+def _generate_difficulty_recommendations(difficulty: str, dropout_risk: float) -> List[str]:
+    """Generate recommendations based on predicted difficulty"""
+    recommendations = []
+    
+    if difficulty == 'difficult':
+        recommendations.append("Consider breaking this habit into smaller, easier steps")
+        recommendations.append("Try habit stacking - attach this to an existing habit")
+        if dropout_risk > 0.6:
+            recommendations.append("High dropout risk detected - consider reducing frequency initially")
+    
+    elif difficulty == 'challenging':
+        recommendations.append("Focus on consistency over perfection")
+        recommendations.append("Set up environmental cues to make the habit easier")
+    
+    elif difficulty == 'moderate':
+        recommendations.append("You're on a good track - maintain your current approach")
+        if dropout_risk > 0.4:
+            recommendations.append("Watch for consistency gaps - they're your main risk factor")
+    
+    else:  # easy
+        recommendations.append("Great job! Consider adding complementary habits")
+        recommendations.append("You might be ready to increase the challenge level")
+    
+    return recommendations
+
+
+def _find_all_historical_streaks(completion_dates: List[date], habit_period: str) -> List[int]:
+    """Find all historical streaks in the completion data"""
+    if not completion_dates:
+        return []
+    
+    sorted_dates = sorted(completion_dates)
+    streaks = []
+    current_streak = 1
+    
+    for i in range(1, len(sorted_dates)):
+        expected_gap = 1 if habit_period.lower() == 'daily' else 7
+        actual_gap = (sorted_dates[i] - sorted_dates[i-1]).days
+        
+        if actual_gap <= expected_gap + 1:  # Allow 1 day tolerance
+            current_streak += 1
+        else:
+            if current_streak > 1:
+                streaks.append(current_streak)
+            current_streak = 1
+    
+    # Don't forget the last streak
+    if current_streak > 1:
+        streaks.append(current_streak)
+    
+    return streaks
+
+
+def _calculate_historical_continuation_rate(historical_streaks: List[int], current_streak: int) -> float:
+    """Calculate how often streaks of this length have continued historically"""
+    if not historical_streaks or current_streak == 0:
+        return 0.5  # Default probability
+    
+    # Find streaks that reached this length
+    relevant_streaks = [s for s in historical_streaks if s >= current_streak]
+    
+    if not relevant_streaks:
+        return 0.3  # Lower probability if never reached this length before
+    
+    # Find streaks that exceeded this length
+    exceeded_streaks = [s for s in relevant_streaks if s > current_streak]
+    
+    if not relevant_streaks:
+        return 0.5
+    
+    continuation_rate = len(exceeded_streaks) / len(relevant_streaks)
+    return continuation_rate
+
+
+def _calculate_recent_consistency(completion_dates: List[date], habit_period: str) -> float:
+    """Calculate consistency in recent completions"""
+    if not completion_dates:
+        return 0.0
+    
+    # Look at last 2 weeks of data
+    two_weeks_ago = date.today() - timedelta(days=14)
+    recent_dates = [d for d in completion_dates if d >= two_weeks_ago]
+    
+    if not recent_dates:
+        return 0.0
+    
+    if habit_period.lower() == 'daily':
+        expected = 14
+        actual = len(recent_dates)
+        return min(1.0, actual / expected)
+    else:  # weekly
+        expected = 2
+        weeks_with_completion = len(set(d.isocalendar()[1] for d in recent_dates))
+        return min(1.0, weeks_with_completion / expected)
+
+
+def _predict_milestone_achievements(current_streak: int, continuation_probability: float) -> Dict[str, float]:
+    """Predict probability of reaching habit formation milestones"""
+    milestones = {
+        '7_days': 7,
+        '21_days': 21,
+        '66_days': 66,
+        '100_days': 100
+    }
+    
+    predictions = {}
+    
+    for milestone_name, milestone_days in milestones.items():
+        if current_streak >= milestone_days:
+            predictions[milestone_name] = 1.0  # Already achieved
+        else:
+            days_needed = milestone_days - current_streak
+            # Probability decreases with distance and depends on continuation probability
+            probability = continuation_probability ** (days_needed / 7)  # Weekly decay
+            predictions[milestone_name] = probability
+    
+    return predictions
+

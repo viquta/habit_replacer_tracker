@@ -32,7 +32,6 @@ try:
         SystemService, UserService
     )
     from backend.models import Habit, HabitPeriod, HabitNotFoundException, DatabaseException
-    from backend.analytics import analyze_habits_comprehensive
     BACKEND_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️  Backend not available: {e}")
@@ -256,7 +255,9 @@ class HabitTrackerCLI:
                 input("\nPress Enter to continue...")
                 return
                 
-            description = Prompt.ask("📝 Description (optional)", default="")
+            self.console.print("\n[dim]💡 Tip: A good description includes the trigger (when/where) and reward (why/benefit)[/dim]")
+            self.console.print("[dim]   Example: 'After morning coffee (trigger), read for 30 minutes to grow knowledge (reward)'[/dim]")
+            description = Prompt.ask("📝 Description with trigger & reward (optional)", default="")
             
             # Improved period selection with numbered options
             self.console.print("\n⏰ Period:")
@@ -317,7 +318,9 @@ class HabitTrackerCLI:
                 current_period = selected_habit.period.value
                 
                 new_name = Prompt.ask("New name", default=current_name)
-                new_desc = Prompt.ask("New description", default=current_desc)
+                
+                self.console.print("\n[dim]💡 Tip: Include trigger (when/where) and reward (why/benefit) in your description[/dim]")
+                new_desc = Prompt.ask("New description with trigger & reward", default=current_desc)
                 new_period = Prompt.ask("New period", choices=["daily", "weekly"], default=current_period)
                 
                 try:
@@ -441,11 +444,12 @@ class HabitTrackerCLI:
             
             self.console.print(today_table)
             
-            # Menu options
+            # Show additional options
             self.console.print("\n[bold bright_yellow]Options:[/bold bright_yellow]")
             self.console.print("• Enter habit number to complete/undo")
             self.console.print("• 'a' - Mark all due habits as complete")
             self.console.print("• 's' - Show completion calendar")
+            self.console.print("• 'n' - View recent notes")
             self.console.print("• 'b' - Back to main menu")
             
             choice = Prompt.ask("\nWhat would you like to do?", default="b")
@@ -456,6 +460,8 @@ class HabitTrackerCLI:
                 self._complete_all_due_habits(habits_due)
             elif choice.lower() == 's':
                 self._show_completion_calendar(habits)
+            elif choice.lower() == 'n':
+                self._show_recent_notes(habits)
             elif choice.isdigit():
                 habit_num = int(choice)
                 if 1 <= habit_num <= len(habits):
@@ -505,7 +511,8 @@ class HabitTrackerCLI:
                     self.console.print(f"[red]❌ Failed to unmark '{habit_name}'[/red]")
             else:
                 # Complete the habit
-                notes = Prompt.ask("Add notes (optional)", default="")
+                self.console.print("[dim]💡 Notes tip: What triggered this habit? How did it feel? What reward did you get?[/dim]")
+                notes = Prompt.ask("Add notes about trigger/experience/reward (optional)", default="")
                 completion = self.completion_service.complete_habit(habit.habit_id, notes=notes)
                 self.console.print(f"[green]✅ Completed '{habit_name}'! 🎉[/green]")
                     
@@ -573,15 +580,82 @@ class HabitTrackerCLI:
         
         input("\nPress Enter to continue...")
 
-    def view_analytics_menu(self):
-        """Display progress and analytics with backend integration"""
-        if not self.backend_ready:
-            self.console.print("❌ Backend services are not available. Cannot view analytics without database connection.", style="bold red")
+    def _show_recent_notes(self, habits):
+        """Show recent completion notes for habits"""
+        if not habits:
+            self.console.print("[yellow]No habits to show notes for![/yellow]")
             input("\nPress Enter to continue...")
             return
-            
+        
+        self.console.print("\n[bold bright_cyan]Select habit to view notes:[/bold bright_cyan]")
+        for i, habit in enumerate(habits, 1):
+            name = habit.habit_name
+            self.console.print(f"{i}. {name}")
+        
+        try:
+            choice = IntPrompt.ask("Enter habit number", default=1)
+            if 1 <= choice <= len(habits):
+                selected_habit = habits[choice - 1]
+                
+                # Get recent completions with notes
+                completions = self.completion_service.get_habit_completions(
+                    selected_habit.habit_id, limit=10
+                )
+                
+                # Filter completions that have notes
+                completions_with_notes = [c for c in completions if c.notes and c.notes.strip()]
+                
+                if completions_with_notes:
+                    self.console.print(f"\n[bold bright_cyan]📝 Recent Notes for '{selected_habit.habit_name}'[/bold bright_cyan]")
+                    
+                    notes_table = Table(box=box.ROUNDED, border_style="bright_cyan")
+                    notes_table.add_column("Date", width=12)
+                    notes_table.add_column("Notes", width=60)
+                    
+                    for completion in completions_with_notes:
+                        completion_date = completion.completion_date.strftime("%Y-%m-%d")
+                        notes_text = completion.notes[:57] + "..." if len(completion.notes) > 60 else completion.notes
+                        notes_table.add_row(completion_date, notes_text)
+                    
+                    self.console.print(notes_table)
+                    
+                    # Show option to view full notes
+                    if any(len(c.notes) > 60 for c in completions_with_notes):
+                        self.console.print("\n[dim]💡 Some notes are truncated. Select a date to view full notes.[/dim]")
+                        
+                        view_full = Prompt.ask("Enter date to view full notes (or press Enter to continue)", default="")
+                        if view_full:
+                            # Find completion by date
+                            selected_completion = next(
+                                (c for c in completions_with_notes 
+                                 if c.completion_date.strftime("%Y-%m-%d") == view_full), 
+                                None
+                            )
+                            if selected_completion:
+                                self.console.print(f"\n[bold]📅 {view_full} - Full Notes:[/bold]")
+                                self.console.print(Panel(selected_completion.notes, border_style="bright_green"))
+                            else:
+                                self.console.print(f"[yellow]No completion found for date {view_full}[/yellow]")
+                else:
+                    self.console.print(f"\n[yellow]No notes found for '{selected_habit.habit_name}'[/yellow]")
+                    self.console.print("[dim]💡 Add notes when completing habits to track your triggers and rewards![/dim]")
+            else:
+                self.console.print("[red]Invalid habit number![/red]")
+                
+        except Exception as e:
+            self.console.print(f"[red]❌ Error showing notes: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def view_analytics_menu(self):
+        """Display progress and analytics with backend integration"""
         self.console.clear()
         self.show_header()
+        
+        if not self.backend_ready:
+            # Show fallback analytics menu for demo purposes
+            self._show_fallback_analytics_menu()
+            return
         
         # Get habits data
         try:
@@ -667,9 +741,10 @@ Highest Streak: [bright_red]{max_streak} days[/bright_red]
         self.console.print("1. 📈 View detailed habit trends")
         self.console.print("2. 🏆 Show difficulty rankings")
         self.console.print("3. 💡 Get personalized recommendations")
-        self.console.print("4. 🔙 Back to main menu")
+        self.console.print("4. 🎯 Advanced Analytics (NEW!)")
+        self.console.print("5. 🔙 Back to main menu")
         
-        choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"], default="4")
+        choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4", "5"], default="5")
         
         if choice == "1":
             self._show_habit_trends()
@@ -677,6 +752,9 @@ Highest Streak: [bright_red]{max_streak} days[/bright_red]
             self._show_difficulty_rankings(analytics_data)
         elif choice == "3":
             self._show_recommendations(analytics_data)
+        elif choice == "4":
+            self._show_advanced_analytics()
+        # Choice 5 (back) will naturally exit the method
     
     def _show_habit_trends(self):
         """Show habit trends over time"""
@@ -809,6 +887,305 @@ Highest Streak: [bright_red]{max_streak} days[/bright_red]
             
         except Exception as e:
             self.console.print(f"[red]❌ Error generating recommendations: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_advanced_analytics(self):
+        """Show advanced predictive analytics using analytics.py functions"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            
+            if not habits:
+                self.console.print("[yellow]No habits found for advanced analytics[/yellow]")
+                input("\nPress Enter to continue...")
+                return
+            
+            self.console.clear()
+            self.show_header()
+            
+            self.console.print(Panel(
+                "[bold bright_magenta]🎯 Advanced Predictive Analytics[/bold bright_magenta]",
+                border_style="bright_magenta"
+            ))
+            
+            # Show menu for advanced analytics
+            self.console.print("\n[bold bright_magenta]Advanced Analytics Options:[/bold bright_magenta]")
+            self.console.print("1. 🎲 Habit Persistence Probability")
+            self.console.print("2. 📊 Difficulty Prediction Analysis")
+            self.console.print("3. 🔥 Streak Continuation Prediction")
+            self.console.print("4. 📋 Complete Advanced Report")
+            self.console.print("5. 🔙 Back to analytics menu")
+            
+            choice = Prompt.ask("\nSelect analysis type", choices=["1", "2", "3", "4", "5"], default="5")
+            
+            if choice == "1":
+                self._show_persistence_probability()
+            elif choice == "2":
+                self._show_difficulty_prediction()
+            elif choice == "3":
+                self._show_streak_prediction()
+            elif choice == "4":
+                self._show_complete_advanced_report()
+            # Choice 5 returns to previous menu
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error in advanced analytics: {e}[/red]")
+            input("\nPress Enter to continue...")
+
+    def _show_persistence_probability(self):
+        """Show habit persistence probability analysis"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            
+            self.console.print("\n[bold bright_cyan]🎲 Habit Persistence Probability Analysis[/bold bright_cyan]")
+            
+            persistence_table = Table(box=box.ROUNDED, border_style="bright_cyan")
+            persistence_table.add_column("Habit", width=25)
+            persistence_table.add_column("Probability", justify="center", width=12)
+            persistence_table.add_column("Trend", justify="center", width=12)
+            persistence_table.add_column("Confidence", justify="center", width=12)
+            persistence_table.add_column("Key Factor", width=20)
+            
+            for habit in habits:
+                # Calculate persistence probability using service
+                persistence_result = self.analytics_service.calculate_habit_persistence_probability(
+                    habit.habit_id
+                )
+                
+                probability = persistence_result.get('probability', 0.0)
+                trend = persistence_result.get('trend_direction', 'unknown')
+                confidence = persistence_result.get('confidence', 'low')
+                
+                # Determine dominant factor
+                factors = persistence_result.get('factors', {})
+                if factors:
+                    max_factor = max(factors.items(), key=lambda x: abs(x[1]))[0]
+                    key_factor = max_factor.replace('_', ' ').title()
+                else:
+                    key_factor = "N/A"
+                
+                # Color coding
+                prob_color = "bright_green" if probability > 0.7 else "bright_yellow" if probability > 0.4 else "red"
+                trend_color = "bright_green" if trend == "improving" else "red" if trend == "declining" else "white"
+                
+                persistence_table.add_row(
+                    habit.habit_name,
+                    f"[{prob_color}]{probability:.1%}[/{prob_color}]",
+                    f"[{trend_color}]{trend}[/{trend_color}]",
+                    confidence,
+                    key_factor
+                )
+            
+            self.console.print(persistence_table)
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error in persistence analysis: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_difficulty_prediction(self):
+        """Show habit difficulty prediction analysis"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            
+            self.console.print("\n[bold bright_yellow]📊 Habit Difficulty Prediction Analysis[/bold bright_yellow]")
+            
+            difficulty_table = Table(box=box.ROUNDED, border_style="bright_yellow")
+            difficulty_table.add_column("Habit", width=25)
+            difficulty_table.add_column("Predicted Difficulty", justify="center", width=18)
+            difficulty_table.add_column("Early Performance", justify="center", width=16)
+            difficulty_table.add_column("Dropout Risk", justify="center", width=12)
+            difficulty_table.add_column("Confidence", justify="center", width=12)
+            
+            for habit in habits:
+                # Get completion history
+                completions = self.completion_service.get_habit_completions(habit.habit_id, limit=30)
+                
+                if len(completions) >= 7:  # Need at least a week of data
+                    # Predict difficulty using service
+                    difficulty_result = self.analytics_service.predict_habit_difficulty(habit.habit_id)
+                    
+                    predicted_difficulty = difficulty_result.get('predicted_difficulty', 'unknown')
+                    early_performance = difficulty_result.get('early_performance_rate', 0.0)
+                    dropout_risk = difficulty_result.get('dropout_risk_score', 0.0)
+                    confidence = difficulty_result.get('confidence', 'low')
+                    
+                    # Color coding
+                    if predicted_difficulty == 'easy':
+                        diff_color = "bright_green"
+                    elif predicted_difficulty == 'moderate':
+                        diff_color = "bright_cyan"
+                    elif predicted_difficulty == 'challenging':
+                        diff_color = "bright_yellow"
+                    else:
+                        diff_color = "red"
+                    
+                    perf_color = "bright_green" if early_performance > 80 else "bright_yellow" if early_performance > 60 else "red"
+                    risk_color = "red" if dropout_risk > 0.6 else "bright_yellow" if dropout_risk > 0.3 else "bright_green"
+                    
+                    difficulty_table.add_row(
+                        habit.habit_name,
+                        f"[{diff_color}]{predicted_difficulty.title()}[/{diff_color}]",
+                        f"[{perf_color}]{early_performance:.1f}%[/{perf_color}]",
+                        f"[{risk_color}]{dropout_risk:.1%}[/{risk_color}]",
+                        confidence
+                    )
+                else:
+                    difficulty_table.add_row(
+                        habit.habit_name,
+                        "[dim]Need more data[/dim]",
+                        "[dim]N/A[/dim]",
+                        "[dim]N/A[/dim]",
+                        "low"
+                    )
+            
+            self.console.print(difficulty_table)
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error in difficulty prediction: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_streak_prediction(self):
+        """Show streak continuation prediction analysis"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            analytics_data = self.analytics_service.get_all_habits_analytics()
+            
+            self.console.print("\n[bold bright_red]🔥 Streak Continuation Prediction Analysis[/bold bright_red]")
+            
+            streak_table = Table(box=box.ROUNDED, border_style="bright_red")
+            streak_table.add_column("Habit", width=25)
+            streak_table.add_column("Current Streak", justify="center", width=14)
+            streak_table.add_column("Continuation Prob", justify="center", width=16)
+            streak_table.add_column("Momentum", justify="center", width=12)
+            streak_table.add_column("Next Milestone", justify="center", width=15)
+            
+            for habit in habits:
+                # Get current streak from analytics
+                habit_analytics = next((a for a in analytics_data if a.habit_id == habit.habit_id), None)
+                current_streak = habit_analytics.current_streak if habit_analytics else 0
+                
+                # Get completion history
+                completions = self.completion_service.get_habit_completions(habit.habit_id)
+                completion_dates = [c.completion_date for c in completions]
+                
+                if current_streak > 0:
+                    # Predict streak continuation using service
+                    streak_result = self.analytics_service.predict_streak_continuation(habit.habit_id)
+                    
+                    continuation_prob = streak_result.get('continuation_probability', 0.0)
+                    momentum = streak_result.get('streak_momentum', 'weak')
+                    milestones = streak_result.get('milestone_predictions', {})
+                    
+                    # Find next achievable milestone
+                    next_milestone = "None"
+                    for milestone, prob in milestones.items():
+                        milestone_days = int(milestone.split('_')[0])
+                        if milestone_days > current_streak and prob > 0.3:
+                            next_milestone = f"{milestone_days} days ({prob:.1%})"
+                            break
+                    
+                    # Color coding
+                    prob_color = "bright_green" if continuation_prob > 0.7 else "bright_yellow" if continuation_prob > 0.4 else "red"
+                    momentum_color = "bright_green" if momentum == "strong" else "bright_yellow" if momentum == "moderate" else "red"
+                    
+                    streak_table.add_row(
+                        habit.habit_name,
+                        f"[bright_green]{current_streak} days[/bright_green]",
+                        f"[{prob_color}]{continuation_prob:.1%}[/{prob_color}]",
+                        f"[{momentum_color}]{momentum}[/{momentum_color}]",
+                        next_milestone
+                    )
+                else:
+                    streak_table.add_row(
+                        habit.habit_name,
+                        "[dim]0 days[/dim]",
+                        "[dim]N/A[/dim]",
+                        "[dim]No streak[/dim]",
+                        "[dim]Build streak first[/dim]"
+                    )
+            
+            self.console.print(streak_table)
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error in streak prediction: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+
+    def _show_complete_advanced_report(self):
+        """Show a complete advanced analytics report"""
+        try:
+            habits = self.habit_service.get_all_habits()
+            analytics_data = self.analytics_service.get_all_habits_analytics()
+            
+            self.console.clear()
+            self.show_header()
+            
+            self.console.print(Panel(
+                "[bold bright_magenta]📋 Complete Advanced Analytics Report[/bold bright_magenta]",
+                border_style="bright_magenta"
+            ))
+            
+            for habit in habits:
+                # Get completion history
+                completions = self.completion_service.get_habit_completions(habit.habit_id)
+                completion_dates = [c.completion_date for c in completions]
+                
+                # Get current streak
+                habit_analytics = next((a for a in analytics_data if a.habit_id == habit.habit_id), None)
+                current_streak = habit_analytics.current_streak if habit_analytics else 0
+                
+                self.console.print(f"\n[bold bright_cyan]🎯 {habit.habit_name}[/bold bright_cyan]")
+                
+                # Persistence Analysis using service
+                persistence_result = self.analytics_service.calculate_habit_persistence_probability(habit.habit_id)
+                probability = persistence_result.get('probability', 0.0)
+                trend = persistence_result.get('trend_direction', 'unknown')
+                
+                self.console.print(f"   📊 Persistence Probability: [bold]{probability:.1%}[/bold] ({trend} trend)")
+                
+                # Difficulty Analysis (if enough data)
+                if len(completions) >= 7:
+                    difficulty_result = self.analytics_service.predict_habit_difficulty(habit.habit_id)
+                    predicted_difficulty = difficulty_result.get('predicted_difficulty', 'unknown')
+                    dropout_risk = difficulty_result.get('dropout_risk_score', 0.0)
+                    
+                    self.console.print(f"   🎯 Predicted Difficulty: [bold]{predicted_difficulty.title()}[/bold] (Dropout Risk: {dropout_risk:.1%})")
+                    
+                    # Show recommendations
+                    recommendations = difficulty_result.get('recommendations', [])
+                    if recommendations:
+                        self.console.print("   💡 Recommendations:")
+                        for rec in recommendations[:2]:  # Show top 2 recommendations
+                            self.console.print(f"      • {rec}")
+                
+                # Streak Analysis (if active streak)
+                if current_streak > 0:
+                    streak_result = self.analytics_service.predict_streak_continuation(habit.habit_id)
+                    continuation_prob = streak_result.get('continuation_probability', 0.0)
+                    momentum = streak_result.get('streak_momentum', 'weak')
+                    
+                    self.console.print(f"   🔥 Current Streak: [bold]{current_streak} days[/bold] (Continuation: {continuation_prob:.1%}, {momentum} momentum)")
+                    
+                    # Show milestone predictions
+                    milestones = streak_result.get('milestone_predictions', {})
+                    next_milestone = None
+                    for milestone, prob in milestones.items():
+                        milestone_days = int(milestone.split('_')[0])
+                        if milestone_days > current_streak and prob > 0.3:
+                            next_milestone = (milestone_days, prob)
+                            break
+                    
+                    if next_milestone:
+                        self.console.print(f"   🎯 Next Milestone: [bold]{next_milestone[0]} days[/bold] ({next_milestone[1]:.1%} probability)")
+                else:
+                    self.console.print("   🔥 No active streak - focus on building consistency")
+            
+            self.console.print(f"\n[dim]Report generated on {date.today().strftime('%B %d, %Y')}[/dim]")
+            
+        except Exception as e:
+            self.console.print(f"[red]❌ Error generating complete report: {e}[/red]")
         
         input("\nPress Enter to continue...")
 

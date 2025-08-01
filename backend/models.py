@@ -3,7 +3,7 @@ Models module for Habit Tracker Application
 Following Object-Oriented programming paradigm as required
 """
 from datetime import datetime, date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any #why is list dict and any not used?
 from dataclasses import dataclass
 from enum import Enum
 
@@ -29,13 +29,13 @@ class User:
 
 
 @dataclass
-class Habit:
+class Habit: #does it matter if the variables are a bit different than in database?
     """Habit model representing a habit in the system"""
     habit_id: Optional[int] = None
     user_id: Optional[int] = None
     habit_name: str = ""
     description: str = ""
-    period: HabitPeriod = HabitPeriod.DAILY
+    period: HabitPeriod = HabitPeriod.DAILY 
     created_date: Optional[date] = None
     is_active: bool = True
     created_at: Optional[datetime] = None

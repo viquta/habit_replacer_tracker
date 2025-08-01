@@ -183,27 +183,6 @@ class TestServiceIntegration(unittest.TestCase):
         self.assertIn('system_initialized', status)
 
 
-class TestDummyModeCompatibility(unittest.TestCase):
-    """Test cases for dummy mode compatibility"""
-    
-    def test_dummy_habit_structure(self):
-        """Test that dummy habit structure is compatible"""
-        # This simulates the DummyHabit class from CLI
-        class DummyHabit:
-            def __init__(self, name, description, period, created_date):
-                self.name = name
-                self.description = description
-                self.period = period
-                self.created_date = created_date
-                self.completions = []
-                self.streak = 0
-        
-        dummy = DummyHabit("Test Habit", "Description", "daily", date.today())
-        
-        self.assertEqual(dummy.name, "Test Habit")
-        self.assertEqual(dummy.period, "daily")
-        self.assertEqual(len(dummy.completions), 0)
-        self.assertEqual(dummy.streak, 0)
 
 
 if __name__ == '__main__':
@@ -214,7 +193,6 @@ if __name__ == '__main__':
     test_suite.addTest(unittest.makeSuite(TestHabitModels))
     test_suite.addTest(unittest.makeSuite(TestAnalyticsFunctions))
     test_suite.addTest(unittest.makeSuite(TestHabitAnalytics))
-    test_suite.addTest(unittest.makeSuite(TestDummyModeCompatibility))
     
     # Add integration tests if backend is available
     try:
