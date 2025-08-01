@@ -379,6 +379,57 @@ class HabitAnalyticsService:
         
         return list(reversed(trends))  # Most recent week first
 
+    def calculate_habit_persistence_probability(self, habit_id: int) -> Dict[str, Any]:
+        """Calculate the probability that a habit will be maintained based on historical patterns"""
+        from .analytics import calculate_habit_persistence_probability
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        completion_dates = [c.completion_date for c in completions]
+        
+        return calculate_habit_persistence_probability(completion_dates, habit.period.value, 4)
+    
+    def predict_habit_difficulty(self, habit_id: int) -> Dict[str, Any]:
+        """Predict difficulty level and provide insights for a habit"""
+        from .analytics import predict_habit_difficulty
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        
+        result = predict_habit_difficulty(habit, completions)
+        result['habit_name'] = habit.habit_name
+        return result
+    
+    def predict_streak_continuation(self, habit_id: int) -> Dict[str, Any]:
+        """Predict likelihood of continuing current streak"""
+        from .analytics import predict_streak_continuation
+        
+        # Get habit data
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completion_service = HabitCompletionService()
+        
+        # Get all completions for this habit
+        completions = completion_service.get_habit_completions(habit_id)
+        completion_dates = [c.completion_date for c in completions]
+        
+        # Get current streak
+        current_streaks = self.analytics_dao.get_current_streaks(self.user_service.get_current_user().user_id)
+        current_streak = next(
+            (s['current_streak'] for s in current_streaks if s['habit_id'] == habit_id), 0
+        )
+        
+        result = predict_streak_continuation(completion_dates, habit.period.value, current_streak)
+        result['habit_name'] = habit.habit_name
+        return result
+
 
 class SystemService:
     """Service for system-wide operations and initialization"""
