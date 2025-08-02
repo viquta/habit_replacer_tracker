@@ -79,8 +79,11 @@ class SimpleHabitTrackerCLI:
         self.console.print("4. ✅ Mark Habit Complete")
         self.console.print("5. 📊 View Analytics")
         self.console.print("6. 📋 List All Habits")
-        self.console.print("7. ❌ Exit")
+        self.console.print("7. 📅 View Completion History")
+        self.console.print("8. ❌ Exit")
         self.console.print("="*50)
+        self.console.print("💡 Tip: Press Enter to list your habits (default option)")
+        self.console.print("💡 Press Ctrl+C anytime to exit")
 
     def create_habit(self):
         """Create a new habit"""
@@ -94,6 +97,9 @@ class SimpleHabitTrackerCLI:
                 return
                 
             description = Prompt.ask("📄 Description (optional)", default="")
+            
+            self.console.print("💡 Daily habits: track every day (e.g., exercise, reading)")
+            self.console.print("💡 Weekly habits: track once per week (e.g., grocery shopping, planning)")
             
             period_choice = Prompt.ask(
                 "⏰ Period", 
@@ -122,13 +128,18 @@ class SimpleHabitTrackerCLI:
             table.add_column("#", style="cyan", width=3)
             table.add_column("Habit Name", style="green", min_width=20)
             table.add_column("Period", style="yellow", width=10)
+            table.add_column("Created", style="magenta", width=12)
             table.add_column("Description", style="blue", min_width=20)
             
             for i, habit in enumerate(habits, 1):
+                # Format creation date
+                created_display = habit.created_date.strftime("%Y-%m-%d") if habit.created_date else "Unknown"
+                
                 table.add_row(
                     str(i),
                     habit.habit_name,
                     habit.period.value,
+                    created_display,
                     habit.description or "No description"
                 )
             
@@ -193,7 +204,7 @@ class SimpleHabitTrackerCLI:
             self.console.print(f"❌ Error deleting habit: {e}")
 
     def mark_habit_complete(self):
-        """Mark a habit as complete for today"""
+        """Mark a habit as complete for any date"""
         habits = self.list_habits()
         if not habits:
             return
@@ -204,15 +215,50 @@ class SimpleHabitTrackerCLI:
             if 1 <= choice <= len(habits):
                 habit = habits[choice - 1]
                 
-                # Check if already completed today
-                if self.completion_service.is_habit_completed_today(habit.habit_id):
-                    self.console.print(f"✅ {habit.habit_name} is already completed today!")
+                # Ask for the completion date
+                self.console.print("💡 Examples: 'today', '2025-08-01', '2025-07-30'")
+                date_input = Prompt.ask(
+                    "📅 Date to mark complete (YYYY-MM-DD or 'today')", 
+                    default="today"
+                )
+                
+                # Parse the date
+                if date_input.lower() == "today":
+                    completion_date = date.today()
+                else:
+                    try:
+                        completion_date = datetime.strptime(date_input, "%Y-%m-%d").date()
+                        
+                        # Validate date range - no more than 1 year in the past, no future dates
+                        today = date.today()
+                        max_past = today.replace(year=today.year - 1)
+                        
+                        if completion_date < max_past:
+                            self.console.print(f"❌ Date too far in the past. Cannot mark habits complete before {max_past}")
+                            return
+                        elif completion_date > today:
+                            self.console.print(f"❌ Cannot mark habits complete for future dates. Please use today or an earlier date.")
+                            return
+                            
+                    except ValueError:
+                        self.console.print("❌ Invalid date format. Please use YYYY-MM-DD")
+                        return
+                
+                # Check if already completed for this date
+                completion = self.completion_service.completion_dao.get_completion_by_habit_and_date(
+                    habit.habit_id, completion_date
+                )
+                if completion:
+                    self.console.print(f"✅ {habit.habit_name} is already completed on {completion_date}!")
                     return
                 
                 notes = Prompt.ask("Add notes (optional)", default="")
                 
-                completion = self.completion_service.complete_habit(habit.habit_id, notes=notes)
-                self.console.print(f"✅ Marked '{habit.habit_name}' as complete!")
+                # Complete the habit for the specified date
+                completion = self.completion_service.complete_habit(
+                    habit.habit_id, completion_date=completion_date, notes=notes
+                )
+                self.console.print(f"✅ Marked '{habit.habit_name}' as complete for {completion_date}!")
                 
             else:
                 self.console.print("❌ Invalid habit number")
@@ -260,6 +306,54 @@ class SimpleHabitTrackerCLI:
         except Exception as e:
             self.console.print(f"❌ Error getting analytics: {e}")
 
+    def view_completion_history(self):
+        """View completion history for a specific habit"""
+        habits = self.list_habits()
+        if not habits:
+            return
+            
+        try:
+            choice = IntPrompt.ask("Enter habit number to view history", default=1)
+            
+            if 1 <= choice <= len(habits):
+                habit = habits[choice - 1]
+                
+                self.console.print(f"\n📅 COMPLETION HISTORY: {habit.habit_name}")
+                self.console.print(f"Created: {habit.created_date.strftime('%Y-%m-%d') if habit.created_date else 'Unknown'}")
+                self.console.print("-" * 50)
+                
+                # Get completions for this habit
+                completions = self.completion_service.get_habit_completions(habit.habit_id, limit=20)
+                
+                if not completions:
+                    self.console.print("📭 No completions found for this habit yet.")
+                    return
+                
+                # Create completion history table
+                table = Table(title=f"Recent Completions ({len(completions)} shown)", box=box.ROUNDED)
+                table.add_column("Date", style="green", width=12)
+                table.add_column("Time", style="cyan", width=10)
+                table.add_column("Notes", style="blue", min_width=30)
+                
+                for completion in completions:
+                    completion_time = completion.created_at.strftime("%H:%M:%S") if completion.created_at else "Unknown"
+                    completion_date = completion.completion_date.strftime("%Y-%m-%d") if completion.completion_date else "Unknown"
+                    notes = completion.notes or "No notes"
+                    
+                    table.add_row(completion_date, completion_time, notes)
+                
+                self.console.print(table)
+                
+                # Show current streak
+                current_streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
+                self.console.print(f"\n🔥 Current streak: {current_streak} {'days' if habit.period.value == 'daily' else 'weeks'}")
+                
+            else:
+                self.console.print("❌ Invalid habit number")
+                
+        except Exception as e:
+            self.console.print(f"❌ Error viewing completion history: {e}")
+
     def run(self):
         """Main application loop"""
         self.show_header()
@@ -270,7 +364,7 @@ class SimpleHabitTrackerCLI:
                 
                 choice = Prompt.ask(
                     "\n🎯 Choose an option",
-                    choices=["1", "2", "3", "4", "5", "6", "7"],
+                    choices=["1", "2", "3", "4", "5", "6", "7", "8"],
                     default="6"
                 )
                 
@@ -287,6 +381,8 @@ class SimpleHabitTrackerCLI:
                 elif choice == "6":
                     self.list_habits()
                 elif choice == "7":
+                    self.view_completion_history()
+                elif choice == "8":
                     self.console.print("👋 Goodbye!")
                     self.running = False
                 

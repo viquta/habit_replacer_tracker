@@ -44,18 +44,18 @@
 - [x] **Code Documentation**: Docstrings for all functions and classes
 
 ### Data & Testing
-- [ ] **Pre-defined Habits**: Project comes with 5 pre-defined habits
-  - [ ] At least one weekly habit
-  - [ ] At least one daily habit
-  - [ ] Clear documentation for each habit
-- [ ] **Test Data**: For each predefined habit → provide tracking data for 4-week period (for testing)
-- [ ] **Database**: Use a relational database (MS SQL Server with Docker)
+- [x] **Pre-defined Habits**: Project comes with 5 pre-defined habits
+  - [x] At least one weekly habit
+  - [x] At least one daily habit
+  - (NOT SURE IF THIS IS THE NOTE SECTIONS I MADE FOR THE SQL)[ ] Clear documentation for each habit
+- [X] **Test Data**: For each predefined habit → provide tracking data for 4-week period (for testing)
+- [X] **Database**: Use a relational database (MS SQL Server (with Docker in case i'm on linux)
 
 ### API & Interface
-- [ ] **Clean API**: Clean API by exposing CLI tool
-  - [ ] User can create habits
-  - [ ] User can delete habits
-  - [ ] User can analyze their habits
+- [x] **Clean API**: Clean API by exposing CLI tool
+  - [x] User can create habits
+  - [x] User can delete habits
+  - [x] User can analyze their habits
 - [x] **Unit Testing**: Unit tests for coding (pytest or unittest)
 
 ---

@@ -107,11 +107,11 @@ GO
 DECLARE @UserID INT = SCOPE_IDENTITY();
 
 INSERT INTO Habits (UserID, HabitName, Description, Period) VALUES 
-(@UserID, '💧 Drink 8 glasses of water', 'Stay hydrated throughout the day', 'daily'),
-(@UserID, '📖 Read for 30 minutes', 'Read books or articles for personal growth', 'daily'),
-(@UserID, '🏃‍♂️ Exercise', 'Physical activity for health', 'daily'),
-(@UserID, '🧘 Meditation', '10 minutes of mindfulness', 'daily'),
-(@UserID, '🏠 Clean house', 'Weekly house cleaning routine', 'weekly');
+(@UserID, 'Drink 8 glasses of water', 'Stay hydrated throughout the day', 'daily'),
+(@UserID, 'Read for 30 minutes', 'Read books or articles for personal growth', 'daily'),
+(@UserID, 'Exercise', 'Physical activity for health', 'daily'),
+(@UserID, 'Meditation', '10 minutes of mindfulness', 'daily'),
+(@UserID, 'Clean house', 'Weekly house cleaning routine', 'weekly');
 GO
 
 -- Insert comprehensive sample completions (4-week period for testing)
