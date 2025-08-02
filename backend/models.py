@@ -82,48 +82,6 @@ class UserSetting:
             self.updated_at = datetime.now()
 
 
-@dataclass
-class HabitAnalytics:
-    """Data class for habit analytics results"""
-    habit_id: int
-    habit_name: str
-    period: str
-    current_streak: int = 0
-    longest_streak: int = 0
-    total_completions: int = 0
-    completion_rate: float = 0.0
-    average_weekly_completions: float = 0.0
-    longest_streak_start: Optional[date] = None
-    longest_streak_end: Optional[date] = None
-    
-    def get_difficulty_level(self) -> str:
-        """
-        Determine habit difficulty based on completion rate
-        Following the app philosophy: assume user is performing unless logged otherwise
-        """
-        if self.completion_rate >= 80:
-            return "Easy"
-        elif self.completion_rate >= 60:
-            return "Moderate"
-        elif self.completion_rate >= 40:
-            return "Challenging"
-        else:
-            return "Difficult"
-
-    def get_consistency_score(self) -> str:
-        """Get consistency score based on streaks and completion rate"""
-        if self.completion_rate >= 90 and self.current_streak >= 7:
-            return "Excellent"
-        elif self.completion_rate >= 75 and self.current_streak >= 5:
-            return "Very Good"
-        elif self.completion_rate >= 60 and self.current_streak >= 3:
-            return "Good"
-        elif self.completion_rate >= 40:
-            return "Needs Improvement"
-        else:
-            return "Just Started"
-
-
 class HabitNotFoundException(Exception):
     """Exception raised when a habit is not found"""
     pass

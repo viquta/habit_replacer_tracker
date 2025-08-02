@@ -1,6 +1,6 @@
 # Project Requirements: Habit Tracker Application
 
-## User Story
+## User Story (CURRENTLY NOT ACHIEVING THIS GOAL BUT ONLY THE ESSENTIALS)
 
 > *"I have bad habits, and I am trying to replace them with good habits, but it's too difficult! If only there was an app that could help me."*
 
@@ -15,18 +15,18 @@
 ## Essential Functionalities Checklist
 
 ### Core Features
-- [done ] **CLI Interface**: No need for GUI, only CLI (for uni version at least)
-- [ ] **Periodic Habits**: Habits must be "periodic" (example: brushing teeth *every day*)
-- [ ] **Habit Management**: User can define new habits
-- [ ] **Task Completion**: Task can be completed (checked-off) at any point in time
+- [x] **CLI Interface**: No need for GUI, only CLI (for uni version at least)
+- [x] **Periodic Habits**: Habits must be "periodic" (example: brushing teeth *every day*)
+- [x] **Habit Management**: User can define new habits
+- [x] **Task Completion**: Task can be completed (checked-off) at any point in time
 
 ### Progress Tracking & Analytics
 - [ ] **Progress Tracking**: Ticking off habit activities for daily/weekly habits → tracking the progress + possibility of streaks of x periods
-  - Example: After a week of completing habit x daily, you get a 7-day streak
-- [ ] **Data Storage & Analysis**: Store tracking (habit created, description, times) and use for data analysis
+  -(NOT NECESSARY FOR ESSENTIAL FUNCTIONALITY) Example: After a week of completing habit x daily, you get a 7-day streak
+- [x] **Data Storage & Analysis**: Store tracking (habit created, description, times) and use for data analysis
   - Purpose: Not for marketing, but for giving statistical analysis of user's habit development
   - Metrics: Most difficult habit, easiest, longest habit streak, etc.
-- [ ] **Analytics Module**: Use functional programming paradigm
+- [x] **Analytics Module**: Use functional programming paradigm
   - Return list of current habits, periodicity, streaks, longest streak, etc.
 
 ---
@@ -34,15 +34,14 @@
 ## Technical Requirements Checklist
 
 ### Development Environment
-- [ ] **Python Version**: At least Python version 3.7 (or later) + tools and libraries
-- [ ] **No Third-Party Tools**: No third-party habit tracking tools
-- [ ] **Programming Paradigm**: Use Object-Oriented programming
-- [ ] **Habit Periods**: Users should be able to create habit periods (daily/weekly)
+- [x] **Python Version**: At least Python version 3.7 (or later) + tools and libraries
+- [x] **No Third-Party Tools**: No third-party habit tracking tools
+- [x] **Programming Paradigm**: Use Object-Oriented programming
 
 ### Documentation & Setup
 - [ ] **Installation Instructions**: Detailed + self-contained installation and run instructions
 - [ ] **README File**: Comprehensive README file
-- [ ] **Code Documentation**: Docstrings for all functions and classes
+- [x] **Code Documentation**: Docstrings for all functions and classes
 
 ### Data & Testing
 - [ ] **Pre-defined Habits**: Project comes with 5 pre-defined habits
@@ -57,7 +56,7 @@
   - [ ] User can create habits
   - [ ] User can delete habits
   - [ ] User can analyze their habits
-- [ ] **Unit Testing**: Unit tests for coding (pytest or unittest)
+- [x] **Unit Testing**: Unit tests for coding (pytest or unittest)
 
 ---
 
