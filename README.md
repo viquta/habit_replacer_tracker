@@ -2,6 +2,26 @@
 
 A Python-based CLI habit tracking application with database integration, designed to help users track and replace bad habits with good ones.
 
+## 🚀 Quick Start
+
+**For the impatient** - Get up and running in minutes:
+
+1. **Prerequisites**: Windows + SQL Server Express + Python 3.8+
+2. **Clone**: `git clone https://github.com/viquta/habit_replacer_tracker.git` and `cd habit_replacer_tracker`
+3. **Virtual Environment** (optional but recommended):
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+4. **Install Dependencies**: `pip install -r requirements.txt`
+5. **Database**: Create `HabitTrackerDB` in SQL Server (SSMS or sqlcmd), then run:
+   ```powershell
+   python backend_and_DB_setup/mssql-express/scripts/setup_db.py
+   ```
+6. **Launch**: `python CLI_simple.py`
+
+For detailed instructions, see the [Installation](#installation) section below.
+
 ## 🌟 Project Philosophy (NOT ESSENTIAL FOR COURSE CRITERIA SO I TOOK AWAY THIS FOR NOW)
 
 **"Assume the user is performing the habit unless they log that they have not performed the routine."**
@@ -10,10 +30,12 @@ For now: a basic habit tracker
 
 ## Table of Contents
 
+- [Quick Start](#-quick-start)
 - [Overview](#overview)
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Code Documentation](#code-documentation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -39,7 +61,9 @@ The project is designed for educational purposes but can be adapted for personal
 
 ## Installation
 
-> **📋 Requirements**: This application requires **Windows** with SQL Server Express. Not compatible with macOS or Linux (but probably you could do it with a docker sql server).
+> **📋 Self-Contained Setup**: This application requires **Windows** with SQL Server Express. All dependencies and setup steps are provided below - no external configuration files or additional downloads needed beyond what's specified.
+
+> **⚠️ Platform Note**: Not compatible with macOS or Linux natively (though could potentially work with Docker SQL Server).
 
 ### Prerequisites
 
@@ -144,6 +168,13 @@ If everything is set up correctly, you should see:
 - A colorful welcome screen with the Habit Tracker logo
 - Main menu with options to manage habits
 - No error messages about database connectivity
+
+**What This Setup Provides:**
+- ✅ Complete application with all dependencies
+- ✅ Sample data for immediate testing
+- ✅ No additional configuration files needed
+- ✅ Self-contained database setup
+- ✅ Ready-to-use habit tracking functionality
 
 **Common Setup Issues:**
 - If you see database connection errors, ensure SQL Server Express is running
@@ -271,7 +302,23 @@ Press Enter to continue...
 - **Start Small**: Begin with 1-2 habits before adding more
 - **Be Honest**: The app works best when you're truthful about completions
 
+## Code Documentation
 
+This project follows Python best practices with comprehensive documentation:
+
+- **Python Docstrings**: All classes, methods, and functions are documented with detailed docstrings following PEP 257 conventions
+- **Type Hints**: Modern Python type annotations for better code clarity and IDE support
+- **Inline Comments**: Complex logic is explained with clear inline comments
+- **Modular Architecture**: Code is organized into logical modules (`backend/`, `models.py`, `services.py`, etc.)
+
+**Key Documentation Locations:**
+- `backend/models.py` - Database models and data structures
+- `backend/services.py` - Business logic and habit management
+- `backend/database.py` - Database connection and operations
+- `backend/analytics.py` - Statistics and reporting functions
+- `CLI_simple.py` - Main application interface
+
+To explore the code documentation, open any Python file in the project - all public methods include comprehensive docstrings explaining parameters, return values, and usage examples.
 
 ## Troubleshooting
 
