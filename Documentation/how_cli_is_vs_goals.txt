@@ -1,0 +1,244 @@
+My goal for version 0.2.1 is to make certain features of the CLI prettier but without
+adding too much bloat code. Here is how each page looks like:
+
+==================================================
+📋 MAIN MENU
+==================================================
+1. 🆕 Create New Habit
+2. ✏️  Edit Habit
+3. 🗑️  Delete Habit
+4. ✅ Mark Habit Complete
+5. 📊 View Analytics
+6. 📋 List All Habits
+7. 📅 View Completion History
+8. ❌ Exit
+==================================================
+💡 Tip: Press Enter to list your habits (default option)
+💡 Press Ctrl+C anytime to exit
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6):
+
+
+
+
+When I choose 1:
+🆕 CREATE NEW HABIT
+------------------------------
+📝 Habit name: showing_0.2.1
+📄 Description (optional) (): yoyo
+💡 Daily habits: track every day (e.g., exercise, reading)
+💡 Weekly habits: track once per week (e.g., grocery shopping, planning)
+⏰ Period [daily/weekly] (daily): weekly
+✅ Created habit: showing_0.2.1 (weekly)
+
+Press Enter to continue...:
+
+(back to main menu)
+
+Reflection: Honestly, this looks good. The only thing I would like to improve is
+to remind the user to reflect on te triggers and reward. Maybe he can write those
+things in the habit description. Or I could (in the future) have dedicated columns
+in the habits table (DB) for trigger, routine and reward, each bein about varchar250.
+
+Ok, let's press 2 in main menu:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 2
+                                                Your Habits                                                
+╭─────┬──────────────────────────┬────────────┬──────────────┬────────────────────────────────────────────╮      
+│ #   │ Habit Name               │ Period     │ Created      │ Description                                │      
+├─────┼──────────────────────────┼────────────┼──────────────┼────────────────────────────────────────────┤      
+│ 1   │ showing_0.2.1            │ weekly     │ 2025-08-03   │ yoyo                                       │      
+│ 2   │ Drink 8 glasses of water │ daily      │ 2025-08-02   │ Stay hydrated throughout the day           │      
+│ 3   │ Read for 30 minutes      │ daily      │ 2025-08-02   │ Read books or articles for personal growth │      
+│ 4   │ Exercise                 │ daily      │ 2025-08-02   │ Physical activity for health               │      
+│ 5   │ Meditation               │ daily      │ 2025-08-02   │ 10 minutes of mindfulness                  │      
+│ 6   │ Clean house              │ weekly     │ 2025-08-02   │ Weekly house cleaning routine              │      
+╰─────┴──────────────────────────┴────────────┴──────────────┴────────────────────────────────────────────╯      
+Enter habit number to edit (1):  1
+
+✏️ Editing: showing_0.2.1
+New name (showing_0.2.1): changed_show_0.2.1
+New description (yoyo): trigger yo, reward yoyo, routine yoyoyoyo
+New period [daily/weekly] (weekly): daily
+✅ Updated habit: changed_show_0.2.1
+
+Press Enter to continue...:
+
+(back to main menu)
+
+Reflection: the Edit Habit functionality is great, I don't have anything else to add except for again, reminding the user to 
+think about the trigger, reward and routine.
+
+Now, let's delete the new habit with option 3:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 3
+                                                Your Habits                                                
+╭─────┬──────────────────────────┬────────────┬──────────────┬────────────────────────────────────────────╮
+│ #   │ Habit Name               │ Period     │ Created      │ Description                                │
+├─────┼──────────────────────────┼────────────┼──────────────┼────────────────────────────────────────────┤
+│ 1   │ changed_show_0.2.1       │ daily      │ 2025-08-03   │ trigger yo, reward yoyo, routine yoyoyoyo  │
+│ 2   │ Drink 8 glasses of water │ daily      │ 2025-08-02   │ Stay hydrated throughout the day           │
+│ 3   │ Read for 30 minutes      │ daily      │ 2025-08-02   │ Read books or articles for personal growth │
+│ 4   │ Exercise                 │ daily      │ 2025-08-02   │ Physical activity for health               │
+│ 5   │ Meditation               │ daily      │ 2025-08-02   │ 10 minutes of mindfulness                  │
+│ 6   │ Clean house              │ weekly     │ 2025-08-02   │ Weekly house cleaning routine              │
+╰─────┴──────────────────────────┴────────────┴──────────────┴────────────────────────────────────────────╯
+Enter habit number to delete (1):  1
+Are you sure you want to delete 'changed_show_0.2.1'? [y/n]: y
+✅ Deleted habit: changed_show_0.2.1
+
+Press Enter to continue...:
+
+(back to main menu)
+
+Reflection: It's good that there is an extra step to ask the user if they are sure they want to delete the app. 
+And if they press "n" they get:  
+❌ Deletion cancelled
+
+Press Enter to continue...:
+
+That's really good. Also, the fact that this delete function is only a "soft delete" on the SQL Server, means that 
+even if they regret deleting the habit, they can always access it and it's data again from the database. The habit
+data is so small, that even if they delete hundreds of habits over several years, I don't think that the storage will 
+exceed 10 megabytes. 
+
+
+Ok, let's mark a habit complete for today's date:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 4
+                                                Your Habits                                                
+╭─────┬──────────────────────────┬────────────┬──────────────┬────────────────────────────────────────────╮
+│ #   │ Habit Name               │ Period     │ Created      │ Description                                │
+├─────┼──────────────────────────┼────────────┼──────────────┼────────────────────────────────────────────┤
+│ 1   │ Drink 8 glasses of water │ daily      │ 2025-08-02   │ Stay hydrated throughout the day           │
+│ 2   │ Read for 30 minutes      │ daily      │ 2025-08-02   │ Read books or articles for personal growth │
+│ 3   │ Exercise                 │ daily      │ 2025-08-02   │ Physical activity for health               │
+│ 4   │ Meditation               │ daily      │ 2025-08-02   │ 10 minutes of mindfulness                  │
+│ 5   │ Clean house              │ weekly     │ 2025-08-02   │ Weekly house cleaning routine              │
+╰─────┴──────────────────────────┴────────────┴──────────────┴────────────────────────────────────────────╯
+Enter habit number to mark complete (1): 4
+💡 Examples: 'today', '2025-08-01', '2025-07-30'
+📅 Date to mark complete (YYYY-MM-DD or 'today') (today):today
+Add notes (optional) (): i felt like in a calm space, the reward was feeling more wholesome lol
+✅ Marked 'Meditation' as complete for 2025-08-03!
+
+Press Enter to continue...:
+
+(back to main menu)
+
+Reflection: nothing to add here but the same feedback --> gotta remind about the trigger / reward 
+or just make the backend have those attributes. But then I'd need to redo the whole thing by adding them.
+
+Ok, let's view Analytics:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 5
+
+📊 ANALYTICS
+------------------------------
+📈 Currently tracked habits: 5
+  • Drink 8 glasses of water (daily)
+  • Read for 30 minutes (daily)
+  • Exercise (daily)
+  • Meditation (daily)
+  • Clean house (weekly)
+
+📅 Daily habits: 4
+  • Drink 8 glasses of water
+  • Read for 30 minutes
+  • Exercise
+  • Meditation
+
+📅 Weekly habits: 1
+  • Clean house
+
+🏆 Best streak: Clean house - 4 days
+
+🔥 Individual habit streaks:
+  • Drink 8 glasses of water: 1 days
+  • Read for 30 minutes: 1 days
+  • Exercise: 1 days
+  • Meditation: 1 days
+  • Clean house: 4 days
+
+Press Enter to continue...:
+
+(back to main menu)
+
+Reflection: Essentially, it does exactly as the minimum requirements for my course wants. 
+The drawback with this kind of listing is when a user has more than 10 habits, then it 
+will be difficult to see the proper progress. In the future, when there is a proper GUI,
+I will improve it. Also, in the "main" version, I have some pretty advanced statistics that
+show probability of a "rooted" habit, which habits are easiest and most difficult, and so on.
+Here, I don't have to do that, but I could ask the professor if this is enough for a good grade.
+
+
+Ok, now let's view all habits:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6):
+                                                Your Habits                                                
+╭─────┬──────────────────────────┬────────────┬──────────────┬────────────────────────────────────────────╮
+│ #   │ Habit Name               │ Period     │ Created      │ Description                                │
+├─────┼──────────────────────────┼────────────┼──────────────┼────────────────────────────────────────────┤
+│ 1   │ Drink 8 glasses of water │ daily      │ 2025-08-02   │ Stay hydrated throughout the day           │
+│ 2   │ Read for 30 minutes      │ daily      │ 2025-08-02   │ Read books or articles for personal growth │
+│ 3   │ Exercise                 │ daily      │ 2025-08-02   │ Physical activity for health               │
+│ 4   │ Meditation               │ daily      │ 2025-08-02   │ 10 minutes of mindfulness                  │
+│ 5   │ Clean house              │ weekly     │ 2025-08-02   │ Weekly house cleaning routine              │
+╰─────┴──────────────────────────┴────────────┴──────────────┴────────────────────────────────────────────╯
+
+Press Enter to continue...: 
+
+Reflection: it's good! basic but decent. Maybe here I could sneak in some more analytics functions that tell
+the user how well it's going with each habit. It can be as easy as an extra column that just says if the habit
+is difficult, easy or just fine. 
+
+Ok, let's view completion history:
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 7
+                                                Your Habits                                                
+╭─────┬──────────────────────────┬────────────┬──────────────┬────────────────────────────────────────────╮
+│ #   │ Habit Name               │ Period     │ Created      │ Description                                │
+├─────┼──────────────────────────┼────────────┼──────────────┼────────────────────────────────────────────┤
+│ 1   │ Drink 8 glasses of water │ daily      │ 2025-08-02   │ Stay hydrated throughout the day           │
+│ 2   │ Read for 30 minutes      │ daily      │ 2025-08-02   │ Read books or articles for personal growth │
+│ 3   │ Exercise                 │ daily      │ 2025-08-02   │ Physical activity for health               │
+│ 4   │ Meditation               │ daily      │ 2025-08-02   │ 10 minutes of mindfulness                  │
+│ 5   │ Clean house              │ weekly     │ 2025-08-02   │ Weekly house cleaning routine              │
+╰─────┴──────────────────────────┴────────────┴──────────────┴────────────────────────────────────────────╯
+Enter habit number to view history (1): 4
+
+📅 COMPLETION HISTORY: Meditation
+Created: 2025-08-02
+--------------------------------------------------
+                                     Recent Completions (9 shown)                                     
+╭──────────────┬────────────┬────────────────────────────────────────────────────────────────────────╮
+│ Date         │ Time       │ Notes                                                                  │
+├──────────────┼────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 2025-08-03   │ 10:07:11   │ i felt like in a calm space, the reward was feeling more wholesome lol │
+│ 2025-08-01   │ 12:14:52   │ Yesterday's peace                                                      │
+│ 2025-07-29   │ 12:14:52   │ Back to it                                                             │
+│ 2025-07-25   │ 12:14:52   │ Weekend mindfulness                                                    │
+│ 2025-07-23   │ 12:14:52   │ Peaceful moment                                                        │
+│ 2025-07-21   │ 12:14:52   │ Feeling centered                                                       │
+│ 2025-07-18   │ 12:14:52   │ Relaxing session                                                       │
+│ 2025-07-15   │ 12:14:52   │ Trying again                                                           │
+│ 2025-07-08   │ 12:14:52   │ First meditation                                                       │
+╰──────────────┴────────────┴────────────────────────────────────────────────────────────────────────╯
+
+🔥 Current streak: 1 days
+
+Press Enter to continue...:
+
+
+Reflection: Not bad! It even has info about current streaks as well as the entire log history with the 
+habit notes. I have nothing to add here. 
+
+Finally, when we exit: 
+
+🎯 Choose an option [1/2/3/4/5/6/7/8] (6): 8
+👋 Goodbye!
+
+Ok, so as far as I'm concerned, the main thing that needs to change in the CLI (and only CLI for now) is:
+    1. Remind user about reflecting on the trigger, and reward for each habit. --> in option 1, 2, and 4 (maybe I missted some idk)
+    2. For the analytics page, instead of a list, I could try to present them in a table? Hmm. idk. I will revisit this
+    idea when I develop a GUI for this app. 

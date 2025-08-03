@@ -96,6 +96,8 @@ class SimpleHabitTrackerCLI:
                 self.console.print("❌ Habit name cannot be empty")
                 return
                 
+            self.console.print("💭 Consider including your trigger, routine, and reward in the description")
+            self.console.print("💡 Example: 'Trigger: After morning coffee, Routine: 10 push-ups, Reward: Feel energized'")
             description = Prompt.ask("📄 Description (optional)", default="")
             
             self.console.print("💡 Daily habits: track every day (e.g., exercise, reading)")
@@ -165,6 +167,8 @@ class SimpleHabitTrackerCLI:
                 self.console.print(f"\n✏️ Editing: {habit.habit_name}")
                 
                 new_name = Prompt.ask("New name", default=habit.habit_name)
+                self.console.print("💭 Consider updating your trigger, routine, and reward in the description")
+                self.console.print("💡 Example: 'Trigger: After morning coffee, Routine: 10 push-ups, Reward: Feel energized'")
                 new_desc = Prompt.ask("New description", default=habit.description or "")
                 new_period = Prompt.ask("New period", choices=["daily", "weekly"], default=habit.period.value)
                 
@@ -252,6 +256,7 @@ class SimpleHabitTrackerCLI:
                     self.console.print(f"✅ {habit.habit_name} is already completed on {completion_date}!")
                     return
                 
+                self.console.print("💭 Reflect: What triggered this habit? How do you feel after completing it?")
                 notes = Prompt.ask("Add notes (optional)", default="")
                 
                 # Complete the habit for the specified date

@@ -338,10 +338,11 @@ class TestTaskCompletionRequirement(unittest.TestCase):
         completion_today = service.complete_habit(habit_id=1)
         self.assertEqual(completion_today.completion_date, date.today())
         
-        # Test completing for tomorrow  
+        # Test completing for tomorrow  --> should show error
         tomorrow = date.today() + timedelta(days=1)
-        completion_future = service.complete_habit(habit_id=1, completion_date=tomorrow)
-        self.assertEqual(completion_future.completion_date, tomorrow)
+        with self.assertRaises(ValueError) as context:
+            service.complete_habit(habit_id=1, completion_date=tomorrow)
+        self.assertEqual(str(context.exception), "Completion date cannot be in the future")
     
     @patch('backend.services.HabitCompletionDAO')
     @patch('backend.services.HabitService')

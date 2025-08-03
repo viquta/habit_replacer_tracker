@@ -111,12 +111,16 @@ class HabitCompletionService:
         self.habit_service = HabitService()
     
     def complete_habit(self, habit_id: int, completion_date: date = None, notes: str = "") -> HabitCompletion:
-        """Mark a habit as completed for a specific date"""
+        """
+        Mark a habit as completed for a specific date
+        There is a semantic error since the completion_date should not be in the future --> fixed
+        """
         habit = self.habit_service.get_habit_by_id(habit_id)  # Verify habit exists
         
         if completion_date is None:
             completion_date = date.today()
-        
+        if completion_date > date.today(): # Ensure completion date is not in the future
+            raise ValueError("Completion date cannot be in the future")
         completion = HabitCompletion(
             habit_id=habit_id,
             completion_date=completion_date,

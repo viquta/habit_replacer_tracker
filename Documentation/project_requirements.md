@@ -21,7 +21,7 @@
 - [x] **Task Completion**: Task can be completed (checked-off) at any point in time
 
 ### Progress Tracking & Analytics
-- [ ] **Progress Tracking**: Ticking off habit activities for daily/weekly habits → tracking the progress + possibility of streaks of x periods
+- [x] **Progress Tracking**: Ticking off habit activities for daily/weekly habits → tracking the progress + possibility of streaks of x periods
   -(NOT NECESSARY FOR ESSENTIAL FUNCTIONALITY) Example: After a week of completing habit x daily, you get a 7-day streak
 - [x] **Data Storage & Analysis**: Store tracking (habit created, description, times) and use for data analysis
   - Purpose: Not for marketing, but for giving statistical analysis of user's habit development
@@ -57,12 +57,4 @@
   - [x] User can delete habits
   - [x] User can analyze their habits
 - [x] **Unit Testing**: Unit tests for coding (pytest or unittest)
-
----
-
-## Implementation Notes
-
-- **Database Choice**: MS SQL Server with Docker
-- **Testing Framework**: pytest or unittest
-- **Analytics Approach**: Functional programming paradigm for analytics module
 

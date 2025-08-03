@@ -47,7 +47,7 @@ class BaseDAO:
                 connection.close()
 
 
-class UserDAO(BaseDAO):
+class UserDAO(BaseDAO): #maybe i dont need a userdao for now since only one user is using this app for now
     """Data Access Object for User operations"""
     
     def create_user(self, user: User) -> int:
@@ -219,7 +219,7 @@ class HabitDAO(BaseDAO):
             cursor.execute(query, params)
             
             habits = []
-            for row in cursor.fetchall():
+            for row in cursor.fetchall(): #the fetchall() returns a list of tuples
                 habits.append(Habit(
                     habit_id=row[0],
                     user_id=row[1],
