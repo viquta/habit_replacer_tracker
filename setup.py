@@ -4,30 +4,37 @@ Setup script for Habit Tracker Application
 Installs dependencies and sets up the environment
 """
 
-import subprocess
+import subprocess # Think of it as a way to programmatically interact with your computer using Python instead of manually entering commands in the terminal. (from: geeksforgeeks)
 import sys
 import os
 from pathlib import Path
 
-def run_command(command, description):
-    """Run a command and handle errors"""
+def run_command(command, description): #command as in shell command, and description is for humans to read
+    """This is a command runner wrapper that executes a shell command and handles errors
+        Be sure to put shell=False in the future because it is a security risk --> shell injection attack
+    """
     print(f"🔧 {description}...")
     try:
+        #subprocess.run is used to execute the command
+        #shell=True allows the command to be a string, which is useful for complex commands
+        #check=True raises an error if the command fails
+        #capture_output=True captures stdout and stderr for later use
+        #text=True returns output as a string instead of bytes
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
         print(f"✅ {description} completed successfully")
         return True
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError as e: # Handle errors from subprocess.run
         print(f"❌ {description} failed: {e}")
         if e.stdout:
-            print(f"Output: {e.stdout}")
+            print(f"Output: {e.stdout}") #stdout is standard out
         if e.stderr:
-            print(f"Error: {e.stderr}")
+            print(f"Error: {e.stderr}") #stderr is standard error
         return False
 
 def check_python_version():
     """Check if Python version meets requirements"""
     version = sys.version_info
-    if version.major == 3 and version.minor >= 7:
+    if version.major == 3 and version.minor >= 7: #pretty straightforward check
         print(f"✅ Python {version.major}.{version.minor}.{version.micro} is compatible")
         return True
     else:
@@ -60,7 +67,7 @@ def setup_database():
     
     setup_db_script = Path(__file__).parent / "backend_and_DB_setup" / "mssql-express" / "scripts" / "setup_db.py"
     
-    if setup_db_script.exists():
+    if setup_db_script.exists(): #basically, if it finds the setup_db.py script it executes it 
         choice = input("\n🔍 Run database setup script? [y/N]: ").lower()
         if choice == 'y':
             command = f'"{sys.executable}" "{setup_db_script}"'

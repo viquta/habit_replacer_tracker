@@ -37,12 +37,15 @@ class SimpleHabitTrackerCLI:
     """
     Simplified CLI application for the Habit Tracker
     Only includes essential functionality as specified in requirements
+    Made a class to encapsulate all functionality and to follow OOP principles
     """
-    
+    #every class has an __init__ method, which is a constructor that initializes the class
     def __init__(self):
         self.console = Console()
         self.running = True
-        
+
+        #i made BACKEND_AVAILABLE variable in the try-except block above, 
+        #hence, if the backend is not available, we cannot initialize services
         if BACKEND_AVAILABLE:
             try:
                 self.user_service = UserService()
@@ -50,7 +53,7 @@ class SimpleHabitTrackerCLI:
                 self.completion_service = HabitCompletionService()
                 self.analytics_service = HabitAnalyticsService()
                 
-                # Ensure demo user exists
+                # Ensure demo user exists --> I think I made this in the db setup script
                 self.current_user = self.user_service.get_current_user()
                 
             except Exception as e:
@@ -64,12 +67,12 @@ class SimpleHabitTrackerCLI:
         header = Panel(
             "🎯 Simple Habit Tracker\nTrack your daily and weekly habits",
             style="bold blue",
-            box=box.ROUNDED
+            box=box.ROUNDED # i can actually have a lot of creative styles here: https://rich.readthedocs.io/en/stable/appendix/box.html 
         )
         self.console.print(header)
 
     def show_main_menu(self):
-        """Display main menu with essential options only"""
+        """Display main menu ... this is pretty redundant, but it's good practice to use docstrings"""
         self.console.print("\n" + "="*50)
         self.console.print("📋 MAIN MENU")
         self.console.print("="*50)
@@ -86,19 +89,21 @@ class SimpleHabitTrackerCLI:
         self.console.print("💡 Press Ctrl+C anytime to exit")
 
     def create_habit(self):
-        """Create a new habit"""
+        """As I named it,this creates a new habit"""
         self.console.print("\n🆕 CREATE NEW HABIT")
         self.console.print("-" * 30)
         
         try:
             habit_name = Prompt.ask("📝 Habit name")
-            if not habit_name.strip():
+            if not habit_name.strip(): #checks if the habit name is empty
                 self.console.print("❌ Habit name cannot be empty")
                 return
                 
+            #i reflected a lot on this, and I think it's a good idea to remind the user about the habit's trigger, routine, and reward
             self.console.print("💭 Consider including your trigger, routine, and reward in the description")
             self.console.print("💡 Example: 'Trigger: After morning coffee, Routine: 10 push-ups, Reward: Feel energized'")
             description = Prompt.ask("📄 Description (optional)", default="")
+            # pretty good documentation on the prompt.ask method: https://rich.readthedocs.io/en/stable/prompt.html
             
             self.console.print("💡 Daily habits: track every day (e.g., exercise, reading)")
             self.console.print("💡 Weekly habits: track once per week (e.g., grocery shopping, planning)")
@@ -109,7 +114,7 @@ class SimpleHabitTrackerCLI:
                 default="daily"
             )
             
-            # Create the habit
+            # Create the habit by going through the habit service (See the backend/services.py file)
             habit = self.habit_service.create_habit(habit_name, description, period_choice)
             
             self.console.print(f"✅ Created habit: {habit.habit_name} ({habit.period.value})")
@@ -120,8 +125,8 @@ class SimpleHabitTrackerCLI:
     def list_habits(self):
         """List all active habits"""
         try:
-            habits = self.habit_service.get_all_habits()
-            
+            habits = self.habit_service.get_all_habits() #calls the get_all_habits method from the HabitService
+            #now we have the list of habits called habits
             if not habits:
                 self.console.print("📭 No habits found. Create one first!")
                 return None
@@ -133,14 +138,14 @@ class SimpleHabitTrackerCLI:
             table.add_column("Created", style="magenta", width=12)
             table.add_column("Description", style="blue", min_width=20)
             
-            for i, habit in enumerate(habits, 1):
+            for i, habit in enumerate(habits, 1): # i always forget the syntax: enumerate(iterable, start)
                 # Format creation date
                 created_display = habit.created_date.strftime("%Y-%m-%d") if habit.created_date else "Unknown"
                 
-                table.add_row(
-                    str(i),
+                table.add_row( 
+                    str(i), #here is the i in the for loop and this is converted to a string
                     habit.habit_name,
-                    habit.period.value,
+                    habit.period.value, #daily or weekly
                     created_display,
                     habit.description or "No description"
                 )
