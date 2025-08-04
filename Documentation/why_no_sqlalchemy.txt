@@ -1,0 +1,31 @@
+
+Justo looking at the performance here:
+
+🆚 COMPARISON 4: Performance Test
+============================================================
+
+⏱️ Testing habit retrieval performance...
+   📊 Raw SQL: 16.14ms for 10 retrievals
+   📊 SQLAlchemy: 44.98ms for 10 retrievals
+
+
+I won't go with SQLAlchemy but I'll stick with raw sql. 
+
+🚀 Raw SQL is the Right Choice for You
+✅ Performance First
+~3x faster (16ms vs 45ms) - that's significant!
+Direct SQL control - no ORM overhead
+Predictable performance - you know exactly what queries run
+Scales better - performance gap widens with complex queries
+✅ Your SQL Skills are an Asset
+You're already comfortable with SQL - why add abstraction?
+Direct database optimization - you can tune queries precisely
+Full control over indexes, query plans, and performance
+Easier debugging - see exactly what SQL is running
+✅ Future-Proof Architecture
+Your current implementation is already excellent:
+
+Clean DAO pattern with proper separation
+Context managers for transaction safety
+Type hints and modern Python features
+Proper error handling and exceptions
