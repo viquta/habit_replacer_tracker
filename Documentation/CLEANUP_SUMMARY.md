@@ -1,5 +1,5 @@
 # Habit Tracker Cleanup Summary
-
+See comparison from the main version with any 0.2 version. //Victor
 ## What Was Cleaned Up
 
 ### ✅ **Analytics Module (backend/analytics.py)**
