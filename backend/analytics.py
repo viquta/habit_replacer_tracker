@@ -78,7 +78,30 @@ def get_longest_run_streak_for_habit(habit: Habit, completions: List[HabitComple
         completions: List of completions for this habit
         
     Returns:
-        Longest streak length for the given habit
+        Longest streak length ever achieved for the given habit
+    """
+    if not completions:
+        return 0
+    
+    # Sort completions by date 
+    sorted_completions = sorted(completions, key=lambda x: x.completion_date)
+    
+    if habit.period == HabitPeriod.DAILY:
+        return _calculate_longest_daily_streak(sorted_completions)
+    else:  # WEEKLY
+        return _calculate_longest_weekly_streak(sorted_completions)
+
+
+def get_current_streak_for_habit(habit: Habit, completions: List[HabitCompletion]) -> int:
+    """
+    Pure function: Return current active streak for a given habit
+    
+    Args:
+        habit: The habit to analyze
+        completions: List of completions for this habit
+        
+    Returns:
+        Current active streak length for the given habit
     """
     return calculate_streak_length(completions, habit.period)
 
@@ -148,7 +171,11 @@ def _calculate_weekly_streak(sorted_completions: List[HabitCompletion]) -> int:
         completion_weeks.add(week_start)
     
     # Check consecutive weeks backwards from current week
+    # Start with current week, but if not completed this week, start with last week
     check_week = current_week_start
+    if check_week not in completion_weeks:
+        check_week -= timedelta(weeks=1)
+    
     while check_week in completion_weeks:
         streak += 1
         check_week -= timedelta(weeks=1)
@@ -162,3 +189,61 @@ def _get_week_start(date_obj: date) -> date:
     """
     days_since_monday = date_obj.weekday()
     return date_obj - timedelta(days=days_since_monday)
+
+
+def _calculate_longest_daily_streak(sorted_completions: List[HabitCompletion]) -> int:
+    """
+    Helper function: Calculate the longest streak ever achieved for daily habits
+    """
+    if not sorted_completions:
+        return 0
+    
+    max_streak = 0
+    current_streak = 1
+    
+    for i in range(1, len(sorted_completions)):
+        prev_date = sorted_completions[i-1].completion_date
+        curr_date = sorted_completions[i].completion_date
+        
+        # Check if dates are consecutive
+        if curr_date == prev_date + timedelta(days=1):
+            current_streak += 1
+        else:
+            max_streak = max(max_streak, current_streak)
+            current_streak = 1
+    
+    return max(max_streak, current_streak)
+
+
+def _calculate_longest_weekly_streak(sorted_completions: List[HabitCompletion]) -> int:
+    """
+    Helper function: Calculate the longest streak ever achieved for weekly habits
+    """
+    if not sorted_completions:
+        return 0
+    
+    # Group completions by week
+    completion_weeks = []
+    for completion in sorted_completions:
+        week_start = _get_week_start(completion.completion_date)
+        if not completion_weeks or completion_weeks[-1] != week_start:
+            completion_weeks.append(week_start)
+    
+    if not completion_weeks:
+        return 0
+    
+    max_streak = 0
+    current_streak = 1
+    
+    for i in range(1, len(completion_weeks)):
+        prev_week = completion_weeks[i-1]
+        curr_week = completion_weeks[i]
+        
+        # Check if weeks are consecutive
+        if curr_week == prev_week + timedelta(weeks=1):
+            current_streak += 1
+        else:
+            max_streak = max(max_streak, current_streak)
+            current_streak = 1
+    
+    return max(max_streak, current_streak)

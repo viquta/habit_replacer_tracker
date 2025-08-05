@@ -181,3 +181,10 @@ class HabitAnalyticsService:
         habit = self.habit_service.get_habit_by_id(habit_id)
         completions = self.completion_service.get_habit_completions(habit_id)
         return get_longest_run_streak_for_habit(habit, completions)
+    
+    def get_current_streak_for_habit(self, habit_id: int) -> int:
+        """Get current active streak for a given habit"""
+        from backend.analytics import get_current_streak_for_habit
+        habit = self.habit_service.get_habit_by_id(habit_id)
+        completions = self.completion_service.get_habit_completions(habit_id)
+        return get_current_streak_for_habit(habit, completions)

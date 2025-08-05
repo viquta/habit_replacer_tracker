@@ -277,41 +277,153 @@ class SimpleHabitTrackerCLI:
             self.console.print(f"❌ Error marking habit complete: {e}")
 
     def view_analytics(self):
-        """View analytics using the 4 essential functions"""
-        self.console.print("\n📊 ANALYTICS")
-        self.console.print("-" * 30)
+        """View analytics using the 4 essential functions with rich tables"""
+        self.console.print("\n📊 ANALYTICS DASHBOARD")
+        self.console.print("-" * 50)
         
         try:
-            # 1. Currently tracked habits
+            # 1. Currently tracked habits overview
             tracked_habits = self.analytics_service.get_currently_tracked_habits()
-            self.console.print(f"📈 Currently tracked habits: {len(tracked_habits)}")
-            for habit in tracked_habits:
-                self.console.print(f"  • {habit.habit_name} ({habit.period.value})")
             
-            # 2. Habits by periodicity
+            # Overview panel
+            overview_panel = Panel(
+                f"📈 Total Active Habits: {len(tracked_habits)}",
+                title="Overview",
+                style="bold green",
+                box=box.ROUNDED
+            )
+            self.console.print(overview_panel)
+            
+            # 2. Habits by periodicity in a table
             daily_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.DAILY)
             weekly_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.WEEKLY)
             
-            self.console.print(f"\n📅 Daily habits: {len(daily_habits)}")
-            for habit in daily_habits:
-                self.console.print(f"  • {habit.habit_name}")
+            periodicity_table = Table(title="📅 Habits by Period", box=box.ROUNDED)
+            periodicity_table.add_column("Period", style="cyan", width=10)
+            periodicity_table.add_column("Count", style="yellow", width=8)
+            periodicity_table.add_column("Habits", style="green", min_width=30)
+            
+            daily_names = ", ".join([h.habit_name for h in daily_habits]) if daily_habits else "None"
+            weekly_names = ", ".join([h.habit_name for h in weekly_habits]) if weekly_habits else "None"
+            
+            periodicity_table.add_row("Daily", str(len(daily_habits)), daily_names)
+            periodicity_table.add_row("Weekly", str(len(weekly_habits)), weekly_names)
+            
+            self.console.print(periodicity_table)
+            
+            # 3. Longest streak across all habits - separate for daily and weekly
+            daily_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.DAILY)
+            weekly_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.WEEKLY)
+            
+            # Best daily streak
+            if daily_habits:
+                best_daily_streak = None
+                best_daily_habit = None
+                for habit in daily_habits:
+                    streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
+                    if best_daily_streak is None or streak > best_daily_streak:
+                        best_daily_streak = streak
+                        best_daily_habit = habit
                 
-            self.console.print(f"\n📅 Weekly habits: {len(weekly_habits)}")
-            for habit in weekly_habits:
-                self.console.print(f"  • {habit.habit_name}")
-            
-            # 3. Longest streak across all habits
-            longest_all = self.analytics_service.get_longest_run_streak_all_habits()
-            if longest_all['habit']:
-                self.console.print(f"\n🏆 Best streak: {longest_all['habit_name']} - {longest_all['streak_length']} days")
+                if best_daily_streak and best_daily_streak > 0:
+                    daily_streak_panel = Panel(
+                        f"🏆 {best_daily_habit.habit_name}\n🔥 {best_daily_streak} days",
+                        title="Best Daily Streak",
+                        style="bold green",
+                        box=box.ROUNDED
+                    )
+                else:
+                    daily_streak_panel = Panel(
+                        "No daily streaks yet - start completing daily habits!",
+                        title="Best Daily Streak",
+                        style="dim",
+                        box=box.ROUNDED
+                    )
             else:
-                self.console.print("\n🏆 No streaks yet - start completing habits!")
+                daily_streak_panel = Panel(
+                    "No daily habits found",
+                    title="Best Daily Streak",
+                    style="dim",
+                    box=box.ROUNDED
+                )
             
-            # 4. Individual habit streaks
-            self.console.print(f"\n🔥 Individual habit streaks:")
-            for habit in tracked_habits:
-                streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
-                self.console.print(f"  • {habit.habit_name}: {streak} days")
+            # Best weekly streak
+            if weekly_habits:
+                best_weekly_streak = None
+                best_weekly_habit = None
+                for habit in weekly_habits:
+                    streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
+                    if best_weekly_streak is None or streak > best_weekly_streak:
+                        best_weekly_streak = streak
+                        best_weekly_habit = habit
+                
+                if best_weekly_streak and best_weekly_streak > 0:
+                    # For weekly habits, the streak should be displayed as weeks, not days
+                    # Assuming the streak is returned in the appropriate unit (weeks for weekly habits)
+                    weekly_streak_panel = Panel(
+                        f"🏆 {best_weekly_habit.habit_name}\n🔥 {best_weekly_streak} weeks",
+                        title="Best Weekly Streak",
+                        style="bold blue",
+                        box=box.ROUNDED
+                    )
+                else:
+                    weekly_streak_panel = Panel(
+                        "No weekly streaks yet - start completing weekly habits!",
+                        title="Best Weekly Streak",
+                        style="dim",
+                        box=box.ROUNDED
+                    )
+            else:
+                weekly_streak_panel = Panel(
+                    "No weekly habits found",
+                    title="Best Weekly Streak",
+                    style="dim",
+                    box=box.ROUNDED
+                )
+            
+            # Display both panels side by side using columns
+            from rich.columns import Columns
+            self.console.print(Columns([daily_streak_panel, weekly_streak_panel]))
+            
+            # 4. Individual habit streaks in a table
+            if tracked_habits:
+                streaks_table = Table(title="🔥 Individual Habit Streaks", box=box.ROUNDED)
+                streaks_table.add_column("Habit Name", style="green", min_width=25)
+                streaks_table.add_column("Period", style="cyan", width=10)
+                streaks_table.add_column("Current Streak", style="yellow", width=15)
+                streaks_table.add_column("Status", style="magenta", min_width=25)
+                
+                for habit in tracked_habits:
+                    streak = self.analytics_service.get_current_streak_for_habit(habit.habit_id)
+                    
+                    # Add visual indicators for streak status
+                    if streak == 0:
+                        status = "🟡 Getting started"
+                    elif streak >= 30:
+                        status = "🔥 On fire!"
+                    elif streak >= 7:
+                        status = "💪 Building momentum"
+                    else:
+                        status = "📈 Growing"
+                    
+                    streak_display = f"{streak} {'days' if habit.period.value == 'daily' else 'weeks'}"
+                    
+                    streaks_table.add_row(
+                        habit.habit_name,
+                        habit.period.value.title(),
+                        streak_display,
+                        status
+                    )
+                
+                self.console.print(streaks_table)
+            else:
+                no_habits_panel = Panel(
+                    "Create your first habit to start tracking streaks!",
+                    title="No Habits Found",
+                    style="dim",
+                    box=box.ROUNDED
+                )
+                self.console.print(no_habits_panel)
                 
         except Exception as e:
             self.console.print(f"❌ Error getting analytics: {e}")
@@ -355,7 +467,7 @@ class SimpleHabitTrackerCLI:
                 self.console.print(table)
                 
                 # Show current streak
-                current_streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
+                current_streak = self.analytics_service.get_current_streak_for_habit(habit.habit_id)
                 self.console.print(f"\n🔥 Current streak: {current_streak} {'days' if habit.period.value == 'daily' else 'weeks'}")
                 
             else:
