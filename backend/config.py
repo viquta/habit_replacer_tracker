@@ -1,4 +1,4 @@
-"""
+r"""
 Configuration module for the Habit Tracker application
 Centralizes database and application settings
 """
@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 # Database Configuration
-"""
+r"""
 Database connection settings for SQL Server Express.
 - server: SQL Server instance (localhost\SQLEXPRESS for local development)
 - database: Target database name
@@ -94,8 +94,7 @@ def get_database_connection_string() -> str:
         str: Complete ODBC connection string ready for use with pyodbc
         
     Example:
-        "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost\SQLEXPRESS;
-         DATABASE=HabitTrackerDB;Trusted_Connection=yes;TrustServerCertificate=yes;"
+        "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost\\SQLEXPRESS;\n         DATABASE=HabitTrackerDB;Trusted_Connection=yes;TrustServerCertificate=yes;"
     """
     config = DATABASE_CONFIG
     
@@ -140,3 +139,11 @@ def is_development_mode() -> bool:
         HABIT_TRACKER_ENV: Set to 'production' to disable development mode
     """
     return os.getenv('HABIT_TRACKER_ENV', 'development').lower() == 'development'
+
+"""
+Helper functions for configuration management
+
+- get_database_connection_string: Constructs and returns the database connection string
+- get_db_scripts_path: Provides the file system path to the database scripts directory
+- is_development_mode: Checks if the application is running in development mode
+"""

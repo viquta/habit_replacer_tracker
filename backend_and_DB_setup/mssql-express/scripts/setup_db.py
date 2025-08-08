@@ -10,6 +10,7 @@ def setup_database():
     
     # Connect directly to HabitTrackerDB since it already exists
     print("🔌 Connecting to HabitTrackerDB...")
+    # note to self: Trusted_Connection uses my OS login; TrustServerCertificate is fine for local dev
     db_connection_string = "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost\\SQLEXPRESS;DATABASE=HabitTrackerDB;Trusted_Connection=yes;TrustServerCertificate=yes"
     
     try:
@@ -31,6 +32,7 @@ def setup_database():
     # Execute the SQL commands (skip database creation parts since we already created it)
     try:
         # Split by GO statements and execute each batch separately
+        # "GO" is a batch separator understood by SSMS, not SQL Server itself
         batches = [batch.strip() for batch in sql_commands.split('GO') if batch.strip()]
         
         for i, batch in enumerate(batches):

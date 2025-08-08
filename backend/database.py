@@ -10,6 +10,8 @@ import sys
 import os
 
 # Add the parent directory to the path to import db_connection
+# note: i manipulate sys.path so this module can import the connection helper without packaging
+# in a real package, i'd expose get_connection via backend.config or env vars
 db_scripts_path = os.path.join(os.path.dirname(__file__), '..', 'backend_and_DB_setup', 'mssql-express', 'scripts')
 if db_scripts_path not in sys.path:
     sys.path.insert(0, db_scripts_path)
@@ -20,6 +22,7 @@ except ImportError:
     # Fallback if db_connection is not available
     def get_connection():
         """Fallback connection function"""
+        # i raise a clear error so callers know setup isn't done
         raise ImportError("Database connection module not found. Please ensure SQL Server is set up.")
 
 from backend.models import (
@@ -34,6 +37,7 @@ class BaseDAO:
     @contextmanager
     def get_db_connection(self):
         """Context manager for database connections"""
+        # this centralizes connect/commit/rollback/close so DAOs don't repeat boilerplate
         connection = None
         try:
             connection = get_connection()
@@ -41,6 +45,7 @@ class BaseDAO:
         except Exception as e:
             if connection:
                 connection.rollback()
+            # i wrap errors into DatabaseException so upper layers handle one type
             raise DatabaseException(f"Database operation failed: {str(e)}")
         finally:
             if connection:
@@ -56,6 +61,7 @@ class UserDAO(BaseDAO): #maybe i dont need a userdao for now since only one user
             cursor = conn.cursor()
             try:
                 # Use OUTPUT clause to get the identity value directly
+                # this avoids a second SELECT SCOPE_IDENTITY() call
                 cursor.execute("""
                     INSERT INTO Users (Username, PasswordHash, Email, CreatedAt)
                     OUTPUT INSERTED.UserID
@@ -214,12 +220,14 @@ class HabitDAO(BaseDAO):
             if active_only:
                 query += " AND IsActive = 1"
             
+            # ORDER BY makes my CLI list deterministic (newest first)
             query += " ORDER BY CreatedAt DESC"
             
             cursor.execute(query, params)
             
             habits = []
             for row in cursor.fetchall(): #the fetchall() returns a list of tuples
+                # enumerate would give (index, value); here i just loop rows
                 habits.append(Habit(
                     habit_id=row[0],
                     user_id=row[1],
@@ -244,6 +252,7 @@ class HabitDAO(BaseDAO):
                habit.is_active, habit.habit_id)
             
             conn.commit()
+            # rowcount tells me if anything actually changed
             return cursor.rowcount > 0
     
     def delete_habit(self, habit_id: int) -> bool:
@@ -298,6 +307,7 @@ class HabitCompletionDAO(BaseDAO):
                 
             except pyodbc.IntegrityError as e:
                 conn.rollback()
+                # nice UX: translate unique-key violation to a readable message
                 if "UK_HabitCompletions_HabitDate" in str(e):
                     raise DatabaseException(f"Habit already completed on {completion.completion_date}")
                 raise DatabaseException(f"Database integrity error: {str(e)}")
@@ -314,6 +324,7 @@ class HabitCompletionDAO(BaseDAO):
             cursor = conn.cursor()
             
             if limit:
+                # TOP (?) is SQL Server's way to limit results; parameterized to avoid SQL injection
                 query = """
                     SELECT TOP (?) CompletionID, HabitID, CompletionDate, Notes, CreatedAt
                     FROM HabitCompletions 

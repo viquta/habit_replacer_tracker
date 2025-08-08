@@ -13,6 +13,7 @@ import sys
 import os
 
 # Add backend to path
+# note: tests run as a module; we tweak sys.path so imports resolve without packaging
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from backend.models import Habit, HabitCompletion, HabitPeriod
@@ -30,12 +31,14 @@ class TestHabitModels(unittest.TestCase):
     
     def test_habit_creation(self):
         """Test creating a habit with default values"""
+        # creating a Habit without IDs simulates a pre-insert state
         habit = Habit(
             habit_name="Test Habit",
             description="A test habit",
             period=HabitPeriod.DAILY
         )
         
+        # sanity checks: properties should be what i passed or defaults
         self.assertEqual(habit.habit_name, "Test Habit")
         self.assertEqual(habit.description, "A test habit")
         self.assertEqual(habit.period, HabitPeriod.DAILY)
@@ -45,6 +48,7 @@ class TestHabitModels(unittest.TestCase):
     
     def test_habit_period_from_string(self):
         """Test creating habit with string period"""
+        # my dataclass normalizes string to Enum in __post_init__
         habit = Habit(
             habit_name="Daily Habit",
             period="daily"
@@ -70,6 +74,7 @@ class TestAnalyticsFunctions(unittest.TestCase):
     
     def setUp(self):
         """Set up test data"""
+        # three habits: active daily, inactive daily, active weekly
         self.active_habit = Habit(
             habit_id=1,
             habit_name="Active Habit",
@@ -132,6 +137,7 @@ class TestAnalyticsFunctions(unittest.TestCase):
     
     def test_get_longest_run_streak_all_habits(self):
         """Test getting longest run streak across all habits"""
+        # mapping: habit_id -> list of completions
         completions_by_habit = {
             1: self.completions,
             2: [],
@@ -181,6 +187,7 @@ class TestHabitServices(unittest.TestCase):
     @patch('backend.services.UserService')
     def test_habit_service_creation(self, mock_user_service, mock_habit_dao):
         """Test that HabitService can be created"""
+        # mocking DAOs keeps this unit test fast and isolated from DB
         from backend.services import HabitService
         
         service = HabitService()

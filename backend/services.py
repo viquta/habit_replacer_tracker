@@ -16,6 +16,7 @@ class UserService:
     """Service class for user-related operations"""
     
     def __init__(self):
+        # service depends on a DAO; thin wrapper that adds app-level behavior
         self.user_dao = UserDAO()
     
     def create_demo_user(self) -> User:
@@ -38,6 +39,7 @@ class UserService:
     
     def get_current_user(self) -> User:
         """Get the current user (demo user for this single-user application)"""
+        # in my app, there's only 1 user, so i always return demo_user
         user = self.user_dao.get_user_by_username("demo_user")
         if not user:
             return self.create_demo_user()
@@ -70,17 +72,20 @@ class HabitService:
     def get_all_habits(self, active_only: bool = True) -> List[Habit]:
         """Get all habits for the current user"""
         current_user = self.user_service.get_current_user()
+        # my demo user always has an id after creation; assert communicates that to the type checker
+        assert current_user.user_id is not None, "Current user must have an ID"
         return self.habit_dao.get_habits_by_user_id(current_user.user_id, active_only)
     
     def get_habit_by_id(self, habit_id: int) -> Habit:
         """Get a specific habit by ID"""
         habit = self.habit_dao.get_habit_by_id(habit_id)
         if not habit:
+            # explicit error so callers can show a friendly message
             raise HabitNotFoundException(f"Habit with ID {habit_id} not found")
         return habit
     
-    def update_habit(self, habit_id: int, habit_name: str = None, description: str = None, 
-                    period: str = None) -> Habit:
+    def update_habit(self, habit_id: int, habit_name: Optional[str] = None, description: Optional[str] = None, 
+                    period: Optional[str] = None) -> Habit:
         """Update an existing habit"""
         habit = self.get_habit_by_id(habit_id)
         
@@ -110,7 +115,7 @@ class HabitCompletionService:
         self.completion_dao = HabitCompletionDAO()
         self.habit_service = HabitService()
     
-    def complete_habit(self, habit_id: int, completion_date: date = None, notes: str = "") -> HabitCompletion:
+    def complete_habit(self, habit_id: int, completion_date: Optional[date] = None, notes: str = "") -> HabitCompletion:
         """
         Mark a habit as completed for a specific date
         There is a semantic error since the completion_date should not be in the future --> fixed
@@ -131,7 +136,7 @@ class HabitCompletionService:
         completion.completion_id = completion_id
         return completion
     
-    def get_habit_completions(self, habit_id: int, limit: int = None) -> List[HabitCompletion]:
+    def get_habit_completions(self, habit_id: int, limit: Optional[int] = None) -> List[HabitCompletion]:
         """Get completions for a specific habit"""
         return self.completion_dao.get_completions_by_habit_id(habit_id, limit)
     
@@ -169,8 +174,12 @@ class HabitAnalyticsService:
         habits = self.habit_service.get_all_habits()
         
         # Get completions for all habits
-        completions_by_habit = {}
+        completions_by_habit: Dict[int, List[HabitCompletion]] = {}
         for habit in habits:
+            # dictionary literal style: habit_id -> list[HabitCompletion]
+            if habit.habit_id is None:
+                # should not happen for persisted habits, but i guard anyway
+                continue
             completions_by_habit[habit.habit_id] = self.completion_service.get_habit_completions(habit.habit_id)
         
         return get_longest_run_streak_all_habits(habits, completions_by_habit)

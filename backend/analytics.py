@@ -23,6 +23,7 @@ def get_currently_tracked_habits(habits: List[Habit]) -> List[Habit]:
     Returns:
         List of active habits
     """
+    # functional style: no mutation, just return a filtered new list
     return [habit for habit in habits if habit.is_active]
 
 
@@ -55,6 +56,9 @@ def get_longest_run_streak_all_habits(habits: List[Habit], completions_by_habit:
     best_habit = None
     
     for habit in habits:
+        # habit_id can be None for non-persisted objects; skip those
+        if habit.habit_id is None:
+            continue
         habit_completions = completions_by_habit.get(habit.habit_id, [])
         if habit_completions:
             streak = calculate_streak_length(habit_completions, habit.period)
@@ -62,6 +66,7 @@ def get_longest_run_streak_all_habits(habits: List[Habit], completions_by_habit:
                 longest_streak = streak
                 best_habit = habit
     
+    # i return both the streak length and the habit name for easy display in CLI
     return {
         'habit': best_habit,
         'streak_length': longest_streak,
@@ -98,7 +103,8 @@ def calculate_streak_length(completions: List[HabitCompletion], period: HabitPer
         return 0
     
     # Sort completions by date (most recent first)
-    sorted_completions = sorted(completions, key=lambda x: x.completion_date, reverse=True)
+    # ensure the key is always a concrete date (some completions may have None)
+    sorted_completions = sorted(completions, key=lambda x: (x.completion_date or date.min), reverse=True)
     
     if period == HabitPeriod.DAILY:
         return _calculate_daily_streak(sorted_completions)
@@ -142,8 +148,12 @@ def _calculate_weekly_streak(sorted_completions: List[HabitCompletion]) -> int:
     streak = 0
     current_week_start = _get_week_start(date.today())
     
+    # use a set so i only count one completion per week regardless of multiple entries
     completion_weeks = set()
     for completion in sorted_completions:
+        if not completion.completion_date:
+            # skip ill-formed entries defensively
+            continue
         week_start = _get_week_start(completion.completion_date)
         completion_weeks.add(week_start)
     

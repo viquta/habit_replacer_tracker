@@ -4,14 +4,21 @@ Database connection module for Habit Tracker app
 import pyodbc
 import os
 
+
 def get_connection():
     """Get a connection to the HabitTracker database using Windows Authentication"""
     
     # Connection parameters
-    server = "localhost\\SQLEXPRESS"
+    server = "localhost\\SQLEXPRESS"  # local SQL Server Express named instance
     database = "HabitTrackerDB"
     
     # Use Windows Authentication (more reliable for local development)
+    # quick note to self on ODBC pieces:
+    # - DRIVER: which ODBC provider to use
+    # - SERVER: host\\instance for SQL Express
+    # - DATABASE: target DB
+    # - Trusted_Connection: use current OS credentials instead of username/password
+    # - TrustServerCertificate: accept self-signed certs (dev convenience)
     connection_string = (
         f"DRIVER={{ODBC Driver 17 for SQL Server}};"
         f"SERVER={server};"
@@ -26,6 +33,7 @@ def get_connection():
     except pyodbc.Error as e:
         print(f"Database connection failed: {e}")
         raise
+
 
 def test_connection():
     """Test the database connection"""
@@ -47,6 +55,7 @@ def test_connection():
             habit_count = cursor.fetchone()[0]
             print(f"🎯 Habits table has {habit_count} records")
         except pyodbc.Error:
+            # in fresh setups, tables might not exist yet
             print("⚠️ Habits table not accessible (this might be expected if setup hasn't run)")
         
         conn.close()
@@ -55,6 +64,7 @@ def test_connection():
     except Exception as e:
         print(f"❌ Database connection test failed: {e}")
         return False
+
 
 if __name__ == "__main__":
     test_connection()

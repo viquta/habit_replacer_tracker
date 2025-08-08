@@ -12,7 +12,7 @@ Clean version with only the essential features:
 import sys
 import os
 from datetime import datetime, date
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -31,6 +31,18 @@ except ImportError as e:
     print(f"⚠️  Backend not available: {e}")
     print("❌ Database backend is required for this application to function")
     BACKEND_AVAILABLE = False
+    # define safe fallbacks so type checkers don't complain — we exit early anyway
+    HabitService = HabitCompletionService = HabitAnalyticsService = UserService = None  # type: ignore
+    Habit = HabitPeriod = HabitNotFoundException = DatabaseException = None  # type: ignore
+
+# If needed for static analysis, i can also add TYPE_CHECKING imports without runtime cost
+if TYPE_CHECKING:  # pragma: no cover
+    from backend.services import HabitService as _HabitService
+    from backend.services import HabitCompletionService as _HabitCompletionService
+    from backend.services import HabitAnalyticsService as _HabitAnalyticsService
+    from backend.services import UserService as _UserService
+    from backend.models import Habit as _Habit
+    from backend.models import HabitPeriod as _HabitPeriod
 
 
 class SimpleHabitTrackerCLI:
@@ -48,13 +60,14 @@ class SimpleHabitTrackerCLI:
         #hence, if the backend is not available, we cannot initialize services
         if BACKEND_AVAILABLE:
             try:
-                self.user_service = UserService()
-                self.habit_service = HabitService()
-                self.completion_service = HabitCompletionService()
-                self.analytics_service = HabitAnalyticsService()
+                self.user_service = UserService()  # type: ignore[operator]
+                self.habit_service = HabitService()  # type: ignore[operator]
+                self.completion_service = HabitCompletionService()  # type: ignore[operator]
+                self.analytics_service = HabitAnalyticsService()  # type: ignore[operator]
                 
                 # Ensure demo user exists --> I think I made this in the db setup script
                 self.current_user = self.user_service.get_current_user()
+                # tip to myself: accessing services via self.* keeps them shared across menu actions
                 
             except Exception as e:
                 self.console.print(f"❌ Failed to initialize services: {e}")
@@ -73,6 +86,7 @@ class SimpleHabitTrackerCLI:
 
     def show_main_menu(self):
         """Display main menu ... this is pretty redundant, but it's good practice to use docstrings"""
+        # UI layout with Rich; keeping it chatty and helpful
         self.console.print("\n" + "="*50)
         self.console.print("📋 MAIN MENU")
         self.console.print("="*50)
@@ -117,6 +131,7 @@ class SimpleHabitTrackerCLI:
             # Create the habit by going through the habit service (See the backend/services.py file)
             habit = self.habit_service.create_habit(habit_name, description, period_choice)
             
+            # habit.period is an Enum; .value gives me the raw string for display
             self.console.print(f"✅ Created habit: {habit.habit_name} ({habit.period.value})")
             
         except Exception as e:
@@ -139,6 +154,7 @@ class SimpleHabitTrackerCLI:
             table.add_column("Description", style="blue", min_width=20)
             
             for i, habit in enumerate(habits, 1): # i always forget the syntax: enumerate(iterable, start)
+                # enumeration reminder to self: i is the index starting from 1, habit is the actual object
                 # Format creation date
                 created_display = habit.created_date.strftime("%Y-%m-%d") if habit.created_date else "Unknown"
                 
@@ -168,6 +184,8 @@ class SimpleHabitTrackerCLI:
             
             if 1 <= choice <= len(habits):
                 habit = habits[choice - 1]
+                # small safety: ensure we have a persisted habit before updating
+                assert habit.habit_id is not None, "Habit must have an ID before updating"
                 
                 self.console.print(f"\n✏️ Editing: {habit.habit_name}")
                 
@@ -199,6 +217,8 @@ class SimpleHabitTrackerCLI:
             
             if 1 <= choice <= len(habits):
                 habit = habits[choice - 1]
+                # ensure habit is persisted
+                assert habit.habit_id is not None, "Habit must have an ID before deletion"
                 
                 confirm = Confirm.ask(f"Are you sure you want to delete '{habit.habit_name}'?")
                 if confirm:
@@ -223,6 +243,8 @@ class SimpleHabitTrackerCLI:
             
             if 1 <= choice <= len(habits):
                 habit = habits[choice - 1]
+                # ensure habit has a primary key before completion
+                assert habit.habit_id is not None, "Habit must have an ID before completion"
                 
                 # Ask for the completion date
                 self.console.print("💡 Examples: 'today', '2025-08-01', '2025-07-30'")
@@ -289,8 +311,8 @@ class SimpleHabitTrackerCLI:
                 self.console.print(f"  • {habit.habit_name} ({habit.period.value})")
             
             # 2. Habits by periodicity
-            daily_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.DAILY)
-            weekly_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.WEEKLY)
+            daily_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.DAILY)  # type: ignore[name-defined]
+            weekly_habits = self.analytics_service.get_habits_with_same_periodicity(HabitPeriod.WEEKLY)  # type: ignore[name-defined]
             
             self.console.print(f"\n📅 Daily habits: {len(daily_habits)}")
             for habit in daily_habits:
@@ -310,6 +332,8 @@ class SimpleHabitTrackerCLI:
             # 4. Individual habit streaks
             self.console.print(f"\n🔥 Individual habit streaks:")
             for habit in tracked_habits:
+                if habit.habit_id is None:
+                    continue
                 streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
                 self.console.print(f"  • {habit.habit_name}: {streak} days")
                 
@@ -333,6 +357,7 @@ class SimpleHabitTrackerCLI:
                 self.console.print("-" * 50)
                 
                 # Get completions for this habit
+                assert habit.habit_id is not None, "Habit must have an ID before fetching completions"
                 completions = self.completion_service.get_habit_completions(habit.habit_id, limit=20)
                 
                 if not completions:
@@ -355,6 +380,7 @@ class SimpleHabitTrackerCLI:
                 self.console.print(table)
                 
                 # Show current streak
+                assert habit.habit_id is not None, "Habit must have an ID before streak calculation"
                 current_streak = self.analytics_service.get_longest_run_streak_for_habit(habit.habit_id)
                 self.console.print(f"\n🔥 Current streak: {current_streak} {'days' if habit.period.value == 'daily' else 'weeks'}")
                 
@@ -378,6 +404,7 @@ class SimpleHabitTrackerCLI:
                     default="6"
                 )
                 
+                # classic menu dispatcher
                 if choice == "1":
                     self.create_habit()
                 elif choice == "2":
@@ -397,6 +424,7 @@ class SimpleHabitTrackerCLI:
                     self.running = False
                 
                 if self.running:
+                    # prompt-as-pause pattern keeps screen readable between actions
                     Prompt.ask("\nPress Enter to continue...")
                     
             except KeyboardInterrupt:
