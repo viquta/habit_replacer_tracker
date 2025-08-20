@@ -4,6 +4,12 @@ Tests only the functionality that was kept:
 1. Habit creation, editing, deletion
 2. Habit completion tracking
 3. Analytics functions (4 specific ones)
+
+This test suite includes:
+- 4 weeks worth of predefined habit data for testing
+- Comprehensive coverage of all analytics functions
+- Tests for streak calculations respecting habit periodicity
+- Edge cases and error scenarios
 """
 
 import unittest
@@ -22,6 +28,16 @@ from backend.analytics import (
     get_longest_run_streak_all_habits,
     get_longest_run_streak_for_habit,
     calculate_streak_length
+)
+from tests.test_data import (
+    get_test_habits,
+    get_four_weeks_completion_data,
+    get_broken_streak_data,
+    get_edge_case_data,
+    get_all_test_data,
+    FOUR_WEEKS_DAYS,
+    PERFECT_DAILY_STREAK,
+    PERFECT_WEEKLY_STREAK
 )
 
 
@@ -172,6 +188,238 @@ class TestAnalyticsFunctions(unittest.TestCase):
         result = calculate_streak_length(weekly_completions, HabitPeriod.WEEKLY)
         self.assertIsInstance(result, int)
         self.assertGreaterEqual(result, 0)
+
+
+class TestFourWeeksData(unittest.TestCase):
+    """Test cases using 4 weeks worth of predefined habit data"""
+    
+    def setUp(self):
+        """Set up 4 weeks test data"""
+        self.test_habits = get_test_habits()
+        self.four_weeks_completions = get_four_weeks_completion_data()
+    
+    def test_perfect_daily_habit_streak(self):
+        """Test analytics with perfect daily habit (28/28 days)"""
+        exercise_habit = self.test_habits[0]  # Exercise habit
+        exercise_completions = self.four_weeks_completions[1]
+        
+        # Should have perfect completion
+        self.assertEqual(len(exercise_completions), PERFECT_DAILY_STREAK)
+        
+        # Test longest run streak calculation
+        longest_streak = get_longest_run_streak_for_habit(exercise_habit, exercise_completions)
+        self.assertEqual(longest_streak, PERFECT_DAILY_STREAK)
+        
+        # Test current streak calculation
+        current_streak = calculate_streak_length(exercise_completions, HabitPeriod.DAILY)
+        self.assertEqual(current_streak, PERFECT_DAILY_STREAK)
+    
+    def test_perfect_weekly_habit_streak(self):
+        """Test analytics with perfect weekly habit (4/4 weeks)"""
+        cleaning_habit = self.test_habits[3]  # House cleaning habit
+        cleaning_completions = self.four_weeks_completions[4]
+        
+        # Should have perfect weekly completion
+        self.assertEqual(len(cleaning_completions), PERFECT_WEEKLY_STREAK)
+        
+        # Test longest run streak calculation
+        longest_streak = get_longest_run_streak_for_habit(cleaning_habit, cleaning_completions)
+        self.assertEqual(longest_streak, PERFECT_WEEKLY_STREAK)
+        
+        # Test current streak calculation
+        current_streak = calculate_streak_length(cleaning_completions, HabitPeriod.WEEKLY)
+        self.assertEqual(current_streak, PERFECT_WEEKLY_STREAK)
+    
+    def test_good_consistency_daily_habit(self):
+        """Test analytics with good but not perfect daily habit (22/28 days)"""
+        reading_habit = self.test_habits[1]  # Reading habit
+        reading_completions = self.four_weeks_completions[2]
+        
+        # Should have 22 completions
+        self.assertEqual(len(reading_completions), 22)
+        
+        # Test streak calculation (should handle gaps properly)
+        longest_streak = get_longest_run_streak_for_habit(reading_habit, reading_completions)
+        self.assertGreater(longest_streak, 0)
+        self.assertLessEqual(longest_streak, 22)
+    
+    def test_improving_pattern_habit(self):
+        """Test analytics with improving habit pattern"""
+        meditation_habit = self.test_habits[2]  # Meditation habit
+        meditation_completions = self.four_weeks_completions[3]
+        
+        # Should show improvement over time (total 17 days)
+        self.assertEqual(len(meditation_completions), 17)
+        
+        # Verify the pattern improves over weeks
+        today = date.today()
+        four_weeks_ago = today - timedelta(days=28)
+        
+        week_counts = [0, 0, 0, 0]
+        for completion in meditation_completions:
+            days_since_start = (completion.completion_date - four_weeks_ago).days
+            week = min(days_since_start // 7, 3)  # Ensure week is 0-3
+            week_counts[week] += 1
+        
+        # Should show improving trend (generally increasing)
+        self.assertEqual(week_counts[0], 2)  # Week 1: 2 days
+        self.assertEqual(week_counts[1], 4)  # Week 2: 4 days
+        self.assertEqual(week_counts[2], 5)  # Week 3: 5 days
+        self.assertEqual(week_counts[3], 6)  # Week 4: 6 days
+    
+    def test_missed_week_weekly_habit(self):
+        """Test analytics with weekly habit that missed one week"""
+        shopping_habit = self.test_habits[4]  # Grocery shopping habit
+        shopping_completions = self.four_weeks_completions[5]
+        
+        # Should have 3 completions (missed week 2)
+        self.assertEqual(len(shopping_completions), 3)
+        
+        # Test streak calculation
+        longest_streak = get_longest_run_streak_for_habit(shopping_habit, shopping_completions)
+        self.assertGreater(longest_streak, 0)
+        self.assertLessEqual(longest_streak, 3)
+    
+    def test_analytics_function_1_currently_tracked(self):
+        """Test Analytics Function 1: Get currently tracked habits"""
+        result = get_currently_tracked_habits(self.test_habits)
+        
+        # All test habits should be active
+        self.assertEqual(len(result), len(self.test_habits))
+        for habit in result:
+            self.assertTrue(habit.is_active)
+    
+    def test_analytics_function_2_same_periodicity(self):
+        """Test Analytics Function 2: Get habits with same periodicity"""
+        daily_habits = get_habits_with_same_periodicity(self.test_habits, HabitPeriod.DAILY)
+        weekly_habits = get_habits_with_same_periodicity(self.test_habits, HabitPeriod.WEEKLY)
+        
+        # Should have 3 daily and 2 weekly habits
+        self.assertEqual(len(daily_habits), 3)
+        self.assertEqual(len(weekly_habits), 2)
+        
+        # Verify all are correct periodicity
+        for habit in daily_habits:
+            self.assertEqual(habit.period, HabitPeriod.DAILY)
+        for habit in weekly_habits:
+            self.assertEqual(habit.period, HabitPeriod.WEEKLY)
+    
+    def test_analytics_function_3_longest_streak_all(self):
+        """Test Analytics Function 3: Get longest run streak of all habits"""
+        result = get_longest_run_streak_all_habits(self.test_habits, self.four_weeks_completions)
+        
+        # Should return the exercise habit with perfect streak
+        self.assertIsNotNone(result['habit'])
+        self.assertEqual(result['habit_name'], "Exercise")
+        self.assertEqual(result['streak_length'], PERFECT_DAILY_STREAK)
+    
+    def test_analytics_function_4_longest_streak_specific(self):
+        """Test Analytics Function 4: Get longest run streak for given habit"""
+        # Test perfect daily habit
+        exercise_habit = self.test_habits[0]
+        exercise_streak = get_longest_run_streak_for_habit(
+            exercise_habit, 
+            self.four_weeks_completions[1]
+        )
+        self.assertEqual(exercise_streak, PERFECT_DAILY_STREAK)
+        
+        # Test perfect weekly habit
+        cleaning_habit = self.test_habits[3]
+        cleaning_streak = get_longest_run_streak_for_habit(
+            cleaning_habit, 
+            self.four_weeks_completions[4]
+        )
+        self.assertEqual(cleaning_streak, PERFECT_WEEKLY_STREAK)
+
+
+class TestStreakCalculationEdgeCases(unittest.TestCase):
+    """Test edge cases for streak calculations with periodicity respect"""
+    
+    def setUp(self):
+        """Set up edge case test data"""
+        self.edge_case_data = get_edge_case_data()
+        self.broken_streak_data = get_broken_streak_data()
+    
+    def test_single_completion_streak(self):
+        """Test streak calculation with only one completion"""
+        single_completion = self.edge_case_data[201]
+        habit = Habit(habit_id=201, period=HabitPeriod.DAILY)
+        
+        streak = get_longest_run_streak_for_habit(habit, single_completion)
+        self.assertEqual(streak, 1)
+    
+    def test_no_completions_streak(self):
+        """Test streak calculation with no completions"""
+        no_completions = self.edge_case_data[202]
+        habit = Habit(habit_id=202, period=HabitPeriod.DAILY)
+        
+        streak = get_longest_run_streak_for_habit(habit, no_completions)
+        self.assertEqual(streak, 0)
+    
+    def test_broken_streak_calculation(self):
+        """Test that broken streaks are calculated correctly"""
+        broken_completions = self.broken_streak_data[101]
+        habit = Habit(habit_id=101, period=HabitPeriod.DAILY)
+        
+        # Should calculate current streak (3 days) not the previous longer streak
+        current_streak = calculate_streak_length(broken_completions, HabitPeriod.DAILY)
+        self.assertEqual(current_streak, 3)
+        
+        # Longest streak should be the previous 10-day streak
+        longest_streak = get_longest_run_streak_for_habit(habit, broken_completions)
+        self.assertEqual(longest_streak, 10)
+    
+    def test_weekly_multiple_completions_same_week(self):
+        """Test weekly habit with multiple completions in same week"""
+        same_week_completions = self.edge_case_data[205]
+        habit = Habit(habit_id=205, period=HabitPeriod.WEEKLY)
+        
+        # Should count as one week even with multiple completions
+        streak = calculate_streak_length(same_week_completions, HabitPeriod.WEEKLY)
+        self.assertEqual(streak, 1)
+    
+    def test_periodicity_respect_daily(self):
+        """Test that daily habits respect daily periodicity in streak calculation"""
+        today = date.today()
+        daily_completions = [
+            HabitCompletion(habit_id=301, completion_date=today),
+            HabitCompletion(habit_id=301, completion_date=today - timedelta(days=1)),
+            HabitCompletion(habit_id=301, completion_date=today - timedelta(days=2)),
+            # Gap of one day
+            HabitCompletion(habit_id=301, completion_date=today - timedelta(days=4)),
+        ]
+        
+        habit = Habit(habit_id=301, period=HabitPeriod.DAILY)
+        
+        # Current streak should be 3 (today, yesterday, day before)
+        current_streak = calculate_streak_length(daily_completions, HabitPeriod.DAILY)
+        self.assertEqual(current_streak, 3)
+    
+    def test_periodicity_respect_weekly(self):
+        """Test that weekly habits respect weekly periodicity in streak calculation"""
+        today = date.today()
+        
+        # Get start of current week (Monday)
+        days_since_monday = today.weekday()
+        current_week_start = today - timedelta(days=days_since_monday)
+        
+        weekly_completions = [
+            # This week
+            HabitCompletion(habit_id=302, completion_date=today),
+            # Last week
+            HabitCompletion(habit_id=302, completion_date=current_week_start - timedelta(days=3)),
+            # Two weeks ago
+            HabitCompletion(habit_id=302, completion_date=current_week_start - timedelta(days=10)),
+            # Skip three weeks ago
+            # Four weeks ago
+            HabitCompletion(habit_id=302, completion_date=current_week_start - timedelta(days=24)),
+        ]
+        
+        habit = Habit(habit_id=302, period=HabitPeriod.WEEKLY)
+        
+        # Current streak should be 3 consecutive weeks
+        current_streak = calculate_streak_length(weekly_completions, HabitPeriod.WEEKLY)
+        self.assertEqual(current_streak, 3)
 
 
 class TestHabitServices(unittest.TestCase):

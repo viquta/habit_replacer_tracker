@@ -1,6 +1,6 @@
 # Habit Tracker Application
 
-A Python-based CLI habit tracking application with database integration, designed to help users track and replace bad habits with good ones.
+A Python-based CLI habit tracking application with SQL Server database integration, designed to help users track and replace bad habits with good ones. (Guys, I'm so sorry that I am using an SQL Server. It is overkill, I know. The main reason for this is to practice working with TSQL for my future.). 
 
 ## 🚀 Quick Start
 
@@ -18,15 +18,16 @@ A Python-based CLI habit tracking application with database integration, designe
    ```powershell
    python backend_and_DB_setup/mssql-express/scripts/setup_db.py
    ```
+   The setub_db will create the tables and user in the database
 6. **Launch**: `python CLI_simple.py`
 
 For detailed instructions, see the [Installation](#installation) section below.
 
-## 🌟 Project Philosophy (NOT ESSENTIAL FOR COURSE CRITERIA SO I TOOK AWAY THIS FOR NOW)
+## 🌟 Project Philosophy 
 
-**"Assume the user is performing the habit unless they log that they have not performed the routine."**
+**Traditional Habit Tracking**: Users actively log when they complete habits. This version follows a standard approach where you mark habits as complete when you do them.
 
-For now: a basic habit tracker
+*Note: Future versions may implement optimistic tracking where completion is assumed unless you log a miss.*
 
 ## Table of Contents
 
@@ -43,7 +44,7 @@ For now: a basic habit tracker
 
 ## Overview
 
-Habit Replacer Tracker is a tool to help users track and (not yet) replace unwanted habits with positive ones. Built with Python, it showcases both OOP and functional programming techniques.  
+Habit Replacer Tracker is a tool to help users track (and in future versions, replace unwanted) habits. Built with Python, it showcases both OOP and functional programming techniques.  
 The project is designed for educational purposes but can be adapted for personal use.
 
 **⚠️ Platform Compatibility**: This application is designed for **Windows users** and requires SQL Server Express.
@@ -63,7 +64,7 @@ The project is designed for educational purposes but can be adapted for personal
 
 > **📋 Self-Contained Setup**: This application requires **Windows** with SQL Server Express. All dependencies and setup steps are provided below - no external configuration files or additional downloads needed beyond what's specified.
 
-> **⚠️ Platform Note**: Not compatible with macOS or Linux natively (though could potentially work with Docker SQL Server).
+> **⚠️ Platform Note**: Not compatible with macOS or Linux natively (though could potentially work with Docker SQL Server). Honestly, in future versions I'm considering Postgres or MariaDB. The SQL Server is usually a headache, but this time around, it worked brilliantly.
 
 ### Prerequisites
 
@@ -71,7 +72,7 @@ The project is designed for educational purposes but can be adapted for personal
    - Make sure Python is added to your system PATH during installation
    - Verify installation: `python --version`
 
-2. **SQL Server Express** - Download from [Microsoft](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)
+2. **SQL Server Express** - Download from [Microsoft](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (Choose the express version...)
    - Install with default settings
    - **Important**: Instance name should be `SQLEXPRESS` (default)
    - Enable SQL Server Browser service
@@ -125,7 +126,7 @@ This will install all required packages including:
 4. Name it `HabitTrackerDB`
 5. Click "OK"
 
-**Option B: Using Command Line**
+**Option B: Using Command Line** (it never worked for me though... I think my "authenticate user" was wrong or something)
 ```powershell
 # Connect to SQL Server using sqlcmd (if available)
 sqlcmd -S localhost\SQLEXPRESS -E -Q "CREATE DATABASE HabitTrackerDB;"
@@ -294,13 +295,7 @@ Created: 2025-08-02
 Press Enter to continue...
 ```
 
-### Tips for Success
 
-- **Be Consistent**: Log your habits daily for accurate tracking
-- **Use Notes**: Add context when marking habits complete or missed
-- **Review Analytics**: Regular check-ins help maintain motivation
-- **Start Small**: Begin with 1-2 habits before adding more
-- **Be Honest**: The app works best when you're truthful about completions
 
 ## Code Documentation
 
@@ -343,7 +338,7 @@ To explore the code documentation, open any Python file in the project - all pub
    .\SQLEXPRESS
    
    # Or with full computer name
-   COMPUTERNAME\SQLEXPRESS
+   YOUR_COMPUTER_NAME\SQLEXPRESS
    ```
 
 #### Problem: "Database 'HabitTrackerDB' already exists but setup fails"
