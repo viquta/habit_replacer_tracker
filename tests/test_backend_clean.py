@@ -3,7 +3,11 @@ Updated tests for the cleaned up Habit Tracker backend
 Tests only the functionality that was kept:
 1. Habit creation, editing, deletion
 2. Habit completion tracking
-3. Analytics functions (4 specific ones)
+3. Analytics functions (4 specific LOW-LEVEL functions from backend.analytics)
+
+NOTE: These tests focus on the pure analytics functions (backend.analytics), 
+NOT the service layer methods used by the CLI. For service layer testing, 
+see test_services.py
 
 This test suite includes:
 - 4 weeks worth of predefined habit data for testing
@@ -14,11 +18,13 @@ This test suite includes:
 
 import unittest
 from unittest.mock import patch, MagicMock
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta #timedelta is pretty awesome btw see here: https://www.geeksforgeeks.org/python/python-datetime-timedelta-function/
 import sys
 import os
 
 # Add backend to path
+#adds parent directory to path 
+#gotcha's: earlier entries take precedence... probably should use insert(0, path) instead
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from backend.models import Habit, HabitCompletion, HabitPeriod
@@ -27,6 +33,7 @@ from backend.analytics import (
     get_habits_with_same_periodicity,
     get_longest_run_streak_all_habits,
     get_longest_run_streak_for_habit,
+    get_current_streak_for_habit,  # Added this missing function
     calculate_streak_length
 )
 from tests.test_data import (
@@ -35,7 +42,6 @@ from tests.test_data import (
     get_broken_streak_data,
     get_edge_case_data,
     get_all_test_data,
-    FOUR_WEEKS_DAYS,
     PERFECT_DAILY_STREAK,
     PERFECT_WEEKLY_STREAK
 )
@@ -46,18 +52,33 @@ class TestHabitModels(unittest.TestCase):
     
     def test_habit_creation(self):
         """Test creating a habit with default values"""
-        habit = Habit(
-            habit_name="Test Habit",
-            description="A test habit",
+        # Test daily habit creation
+        daily_habit = Habit(
+            habit_name="Test Daily Habit",
+            description="A test daily habit",
             period=HabitPeriod.DAILY
         )
         
-        self.assertEqual(habit.habit_name, "Test Habit")
-        self.assertEqual(habit.description, "A test habit")
-        self.assertEqual(habit.period, HabitPeriod.DAILY)
-        self.assertTrue(habit.is_active)
-        self.assertIsNotNone(habit.created_date)
-        self.assertIsNotNone(habit.created_at)
+        self.assertEqual(daily_habit.habit_name, "Test Daily Habit")
+        self.assertEqual(daily_habit.description, "A test daily habit")
+        self.assertEqual(daily_habit.period, HabitPeriod.DAILY)
+        self.assertTrue(daily_habit.is_active)
+        self.assertIsNotNone(daily_habit.created_date)
+        self.assertIsNotNone(daily_habit.created_at)
+        
+        # Test weekly habit creation
+        weekly_habit = Habit(
+            habit_name="Test Weekly Habit",
+            description="A test weekly habit",
+            period=HabitPeriod.WEEKLY
+        )
+        
+        self.assertEqual(weekly_habit.habit_name, "Test Weekly Habit")
+        self.assertEqual(weekly_habit.description, "A test weekly habit")
+        self.assertEqual(weekly_habit.period, HabitPeriod.WEEKLY)
+        self.assertTrue(weekly_habit.is_active)
+        self.assertIsNotNone(weekly_habit.created_date)
+        self.assertIsNotNone(weekly_habit.created_at)
     
     def test_habit_period_from_string(self):
         """Test creating habit with string period"""
@@ -82,7 +103,11 @@ class TestHabitModels(unittest.TestCase):
 
 
 class TestAnalyticsFunctions(unittest.TestCase):
-    """Test cases for the 4 essential analytics functions"""
+    """Test cases for the 4 essential LOW-LEVEL analytics functions from backend.analytics
+    
+    These are the pure functions that take data as parameters, NOT the service layer methods.
+    The CLI uses service layer methods which wrap these functions.
+    """
     
     def setUp(self):
         """Set up test data"""
@@ -168,6 +193,14 @@ class TestAnalyticsFunctions(unittest.TestCase):
         # Should calculate streak length for the given habit
         self.assertIsInstance(result, int)
         self.assertGreater(result, 0)
+    
+    def test_get_current_streak_for_habit(self):
+        """Test getting current streak for a specific habit (used by CLI)"""
+        result = get_current_streak_for_habit(self.active_habit, self.completions)
+        
+        # Should calculate current streak length for the given habit
+        self.assertIsInstance(result, int)
+        self.assertGreaterEqual(result, 0)
     
     def test_calculate_streak_length_empty_completions(self):
         """Test streak calculation with no completions"""
