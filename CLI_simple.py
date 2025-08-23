@@ -115,8 +115,15 @@ class SimpleHabitTrackerCLI:
             )
             
             # Create the habit by going through the habit service (See the backend/services.py file)
+            #stateful operation
             habit = self.habit_service.create_habit(habit_name, description, period_choice)
-            
+            #
+            #   Before: Database has N habits
+            #       ↓
+            #   habit = self.habit_service.create_habit(...)  ← STATEFUL OPERATION
+            #       ↓
+            #   After: Database has N+1 habits (permanent change)
+            #
             self.console.print(f"✅ Created habit: {habit.habit_name} ({habit.period.value})")
             
         except Exception as e:
