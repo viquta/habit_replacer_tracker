@@ -1,0 +1,26 @@
+Conception Phase 1.1.1
+User Story:
+“I have bad habits, and I am trying to replace them with good habits, but it’s too difficult. If only there were an app to help me replace the bad ones with the good ones.”
+This user story reflects both my personal interest in habit formation and insights from The Power of Habit (Duhigg, 2014) and Atomic Habits (Clear, 2018). Both emphasize the habit loop: trigger → routine → reward. My application focuses on modifying routines rather than eliminating triggers or rewards, which is often more realistic in daily life.
+Project Goal:
+The goal of this project is to create a command-line habit tracker that helps users replace bad habits with good ones. The design prioritizes a smooth user experience: the system will assume that habits are performed unless the user actively logs otherwise.
+System Design:
+Habit Class:
+Attributes: habit_id, name, trigger, routine, reward, periodicity (daily/weekly), creation_date.
+Methods: add_habit(), delete_habit(), log_event(), get_streak().
+Each Habit instance will maintain a list of associated HabitEvents for dynamic streak computation.
+Database Schema:
+Users (user_id, name)
+Habits (habit_id, user_id, name, trigger, routine, reward, periodicity, creation_date)
+HabitEvents (event_id, habit_id, date, status)
+This schema allows persistent storage, efficient querying, and flexibility in reporting.
+Architecture:
+Modular Python project structure with separate files for CLI interface, business logic, analytics functions, and database access.
+CLI built with Rich for enhanced interaction.
+Database connection via PyODBC to SQL Server.
+Testing with Pytest and predefined habit data (including a 4-week synthetic dataset) to ensure robustness.
+Planned Analytics:
+Functional programming will be used for analytics functions that:
+Calculate streaks and longest streaks.
+Estimate probability of habit consolidation.
+Identify habits that are hardest to replace.

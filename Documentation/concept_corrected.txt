@@ -1,0 +1,81 @@
+Conception Phase - Habit Tracker Application
+
+User Story:
+"I have bad habits, and I am trying to replace them with good habits, but it's too difficult. If only there were an app to help me track and build positive habits consistently."
+This user story reflects both personal interest in habit formation and insights from The Power of Habit (Duhigg, 2014) and Atomic Habits (Clear, 2018). Both emphasize the habit loop: trigger → routine → reward. The application focuses on tracking habit completion with manual logging (active tracking approach).
+
+Project Goal:
+The goal of this project is to create a command-line habit tracker that helps users track and analyze their daily and weekly habits. The design uses traditional habit tracking where users actively mark habits as complete when they perform them.
+
+System Design:
+
+Data Models (using Python dataclasses):
+- Habit Model:
+  Attributes: habit_id, user_id, habit_name, description, period (HabitPeriod enum), created_date, is_active, created_at
+  HabitPeriod Enum: DAILY, WEEKLY
+  Each Habit uses a dataclass pattern with automatic initialization and validation.
+
+- HabitCompletion Model:
+  Attributes: completion_id, habit_id, completion_date, notes, created_at
+  Tracks individual habit completion instances with optional notes.
+
+- User Model:
+  Attributes: user_id, username, password_hash, email, created_at
+
+Database Schema (SQL Server):
+- Users (user_id, username, password_hash, email, created_at)
+- Habits (habit_id, user_id, habit_name, description, period, created_date, is_active, created_at)
+- HabitCompletions (completion_id, habit_id, completion_date, notes, created_at)
+This schema supports persistent storage, efficient querying, and comprehensive habit tracking.
+
+Architecture (Three-Layer Design):
+1. Data Layer: 
+   - SQL Server database with DAO pattern
+   - Classes: HabitDAO, HabitCompletionDAO, UserDAO
+   - Handles all database operations with proper connection management
+
+2. Business Logic Layer: 
+   - Service classes implementing business rules
+   - Classes: HabitService, HabitCompletionService, UserService, HabitAnalyticsService
+   - Coordinates between data layer and presentation layer
+
+3. Presentation Layer: 
+   - Rich-enhanced CLI application
+   - Class: SimpleHabitTrackerCLI
+   - Handles user interaction, input validation, and display formatting
+
+Technology Stack:
+- CLI built with Rich library for enhanced user interaction (tables, panels, colored output)
+- Database connection via PyODBC to SQL Server Express
+- Testing with Pytest and comprehensive 4-week synthetic datasets
+- Type hints and modern Python features (dataclasses, enums)
+
+Core Functionality:
+1. Habit Management: Create, edit, delete, and list habits
+2. Completion Tracking: Mark habits complete for any date with optional notes
+3. Analytics Dashboard: View streaks, progress, and habit statistics
+4. Data Validation: Input validation and error handling throughout
+5. User Experience: Intuitive CLI with helpful prompts and visual feedback
+
+Essential Analytics (Functional Programming):
+Four pure functions for habit analysis (no side effects):
+1. get_currently_tracked_habits() - Return list of active habits
+2. get_habits_with_same_periodicity() - Filter habits by period (daily/weekly)
+3. get_longest_run_streak_all_habits() - Calculate overall longest streak
+4. get_longest_run_streak_for_habit() - Calculate streak for specific habit
+
+Additional analytics functions:
+- get_current_streak_for_habit() - Current active streak calculation
+- calculate_streak_length() - Core streak computation logic respecting periodicity
+
+Key Design Decisions:
+- Manual completion tracking (not optimistic) for better user control
+- Separation of daily and weekly habits with appropriate streak calculations
+- Rich CLI for better user experience without GUI complexity
+- Comprehensive error handling and user feedback
+- Modular architecture for maintainability and testing
+
+Programming Paradigms:
+- Object-Oriented Programming: Used for data models, service classes, and main CLI application
+- Functional Programming: Used for analytics module with pure functions
+- Clean separation between stateful operations (database changes) and stateless operations (calculations)
